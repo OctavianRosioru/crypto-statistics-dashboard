@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NEW_STATISTIC — Admin</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="admin-header">
+      <h1>NEW_STATISTIC <span class="muted">— admin</span></h1>
+      <a href="/" class="back-link">← back to dashboard</a>
+    </header>
+
+    <section class="filters-panel">
+      <div class="filter-row">
+        <button id="addBtn" class="apply-btn">+ Add channel</button>
+        <button id="reloadBtn" class="apply-btn secondary">Reload list</button>
+        <span id="status" class="status"></span>
+      </div>
+    </section>
+
+    <div id="channels" class="channel-list"></div>
+
+    <!-- modal pentru editare/adăugare -->
+    <div id="modal" class="modal hidden">
+      <div class="modal-card">
+        <h2 id="modalTitle">Edit channel</h2>
+        <form id="form">
+          <input type="hidden" id="f_id" />
+
+          <div class="filter-row">
+            <label class="filter-label">Name</label>
+            <input id="f_name" class="filter-input wide" required />
+          </div>
+          <div class="filter-row">
+            <label class="filter-label">Chat ID</label>
+            <input id="f_chatId" class="filter-input wide" placeholder="-1001234567890" required />
+          </div>
+          <div class="filter-row">
+            <label class="checkbox-label"><input type="checkbox" id="f_enabled" checked /> Enabled</label>
+          </div>
+          <div class="filter-row">
+            <label class="filter-label">Mode</label>
+            <label class="radio-label"><input type="radio" name="mode" value="Trigger" id="m_trigger" checked /> Trigger</label>
+            <label class="radio-label"><input type="radio" name="mode" value="Statistic" id="m_statistic" /> Statistic</label>
+          </div>
+
+          <fieldset id="triggerBlock" class="mode-block">
+            <legend>Trigger config</legend>
+            <div class="filter-row">
+              <label class="filter-label">Exchange</label>
+              <select id="t_exchange" class="filter-select">
+                <option value="*">Any</option>
+                <option value="BINANCE">BINANCE</option>
+                <option value="BYBIT">BYBIT</option>
+              </select>
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Symbols</label>
+              <input id="t_symbols" class="filter-input wide" placeholder="BTCUSDT, ETHUSDT (gol = toate)" />
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Side</label>
+              <select id="t_side" class="filter-select">
+                <option value="Any">Any</option>
+                <option value="Buy">Buy</option>
+                <option value="Sell">Sell</option>
+              </select>
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Distance</label>
+              <input id="t_dmin" type="number" step="0.1" min="0" class="filter-input narrow" /><span class="unit">% min</span>
+              <input id="t_dmax" type="number" step="0.1" min="0" class="filter-input narrow" /><span class="unit">% max (0 = ∞)</span>
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Pattern</label>
+              <input id="t_minTp" type="number" min="1" value="2" class="filter-input narrow" /><span class="unit">min TPs</span>
+              <input id="t_window" type="number" min="1" value="60" class="filter-input narrow" /><span class="unit">window sec</span>
+            </div>
+            <div class="filter-row">
+              <label class="checkbox-label"><input type="checkbox" id="t_posNet" checked /> Require net P&L &gt; 0</label>
+              <input id="t_maxTpAge" type="number" min="100" step="100" value="1500" class="filter-input narrow" /><span class="unit">max TP age ms</span>
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Cooldown</label>
+              <input id="t_cooldown" type="number" min="0" value="30" class="filter-input narrow" /><span class="unit">sec</span>
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Message</label>
+              <input id="t_msg" class="filter-input wide" value="#{exchange} #{symbol} {side} #{distance}" />
+            </div>
+            <div class="filter-row hint">
+              <span>Tokeni: <code>{exchange}</code> <code>{symbol}</code> <code>{side}</code> <code>{distance}</code> <code>{tp}</code> <code>{sl}</code> <code>{none}</code> <code>{shots}</code> <code>{net}</code> <code>{age}</code></span>
+            </div>
+          </fieldset>
+
+          <fieldset id="statBlock" class="mode-block">
+            <legend>Statistic config</legend>
+            <div class="filter-row">
+              <label class="filter-label">Period</label>
+              <select id="s_period" class="filter-select">
+                <option value="12">12h</option>
+                <option value="24" selected>24h</option>
+                <option value="72">72h</option>
+                <option value="168">168h</option>
+                <option value="336">336h</option>
+                <option value="720">720h</option>
+              </select>
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Frequency</label>
+              <select id="s_freq" class="filter-select">
+                <option value="0">30s test</option>
+                <option value="1">1h</option>
+                <option value="2">2h</option>
+                <option value="3">3h</option>
+                <option value="6">6h</option>
+                <option value="12">12h</option>
+                <option value="24">24h</option>
+              </select>
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Top range</label>
+              <input id="s_skip" type="number" min="0" value="0" class="filter-input narrow" /><span class="unit">skip</span>
+              <input id="s_topN" type="number" min="1" value="20" class="filter-input narrow" /><span class="unit">take</span>
+              <span class="hint" id="s_rangePreview"></span>
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Symbols</label>
+              <input id="s_symbols" class="filter-input wide" placeholder="btcusdt, ethusdt (gol = toate; auto-uppercase)" />
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Category</label>
+              <select id="s_category" class="filter-select">
+                <option value="Profitable">Profitable</option>
+                <option value="Losing">Losing</option>
+                <option value="Active">Active</option>
+              </select>
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Side</label>
+              <select id="s_side" class="filter-select">
+                <option value="Any">Any (auto-detect per symbol)</option>
+                <option value="Buy">Buy only</option>
+                <option value="Sell">Sell only</option>
+              </select>
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Distance</label>
+              <input id="s_dmin" type="number" step="0.1" min="0" value="0" class="filter-input narrow" /><span class="unit">% min</span>
+              <input id="s_dmax" type="number" step="0.1" min="0" value="0" class="filter-input narrow" /><span class="unit">% max</span>
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Min quote</label>
+              <input id="s_minQ" type="number" min="0" value="0" class="filter-input narrow" /><span class="unit">USDT</span>
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Horizon</label>
+              <select id="s_horizon" class="filter-select">
+                <option value="1">1s</option>
+                <option value="5">5s</option>
+                <option value="15">15s</option>
+                <option value="30">30s</option>
+                <option value="60">60s</option>
+                <option value="300" selected>300s</option>
+              </select>
+            </div>
+            <div class="filter-row">
+              <label class="filter-label">Message</label>
+              <input id="s_msg" class="filter-input wide" value="#{symbol} {exchange} {side}" />
+              <input id="s_delay" type="number" min="0" step="100" value="1000" class="filter-input narrow" /><span class="unit">ms pauză între</span>
+            </div>
+            <div class="filter-row hint">
+              <span>Un mesaj per simbol. Tokeni: <code>{symbol}</code> <code>{exchange}</code> <code>{side}</code> <code>{tp}</code> <code>{sl}</code> <code>{shots}</code> <code>{net}</code></span>
+            </div>
+          </fieldset>
+
+          <div class="filter-row">
+            <button type="submit" class="apply-btn">Save</button>
+            <button type="button" id="cancelBtn" class="apply-btn secondary">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+  <script src="admin.js" defer></script>
+</body>
+</html>

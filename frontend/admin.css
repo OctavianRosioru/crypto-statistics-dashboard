@@ -1,0 +1,71 @@
+.admin-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.admin-header .muted { color: #888; font-weight: 400; font-size: 0.7em; }
+.back-link { font-size: 0.9em; color: #2563eb; text-decoration: none; }
+.back-link:hover { text-decoration: underline; }
+
+.apply-btn.secondary {
+  background: #e5e7eb; color: #111;
+}
+
+.channel-list {
+  display: grid; grid-template-columns: 1fr; gap: 0.75rem;
+  margin-top: 1rem;
+}
+.channel-card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+  padding: 0.9rem 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.channel-card.disabled { opacity: 0.6; }
+.channel-card .head {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.channel-card h3 { margin: 0; font-size: 1.05rem; }
+.channel-card .badge {
+  display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px;
+  font-size: 0.75rem; font-weight: 600; margin-right: 0.4rem;
+}
+.badge.trigger { background: #dbeafe; color: #1d4ed8; }
+.badge.statistic { background: #fce7f3; color: #be185d; }
+.badge.disabled { background: #fee2e2; color: #b91c1c; }
+.channel-card .meta {
+  font-size: 0.85rem; color: #4b5563; margin-top: 0.4rem;
+}
+.channel-card .meta code {
+  background: #f3f4f6; padding: 0.05rem 0.3rem; border-radius: 3px;
+}
+.channel-card .actions {
+  display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.6rem;
+}
+.channel-card .actions button {
+  padding: 0.25rem 0.6rem; font-size: 0.85rem; border-radius: 4px;
+  border: 1px solid #d1d5db; background: #fff; cursor: pointer;
+}
+.channel-card .actions button:hover { background: #f3f4f6; }
+.channel-card .actions .danger { color: #b91c1c; border-color: #fecaca; }
+
+.modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: flex-start; justify-content: center;
+  z-index: 1000; padding-top: 4vh;
+}
+.modal.hidden { display: none; }
+.modal-card {
+  background: #fff; border-radius: 8px; max-width: 720px; width: 100%;
+  padding: 1.2rem 1.5rem; max-height: 92vh; overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+.modal-card h2 { margin-top: 0; }
+.mode-block {
+  border: 1px solid #e5e7eb; border-radius: 6px; padding: 0.6rem 0.9rem 0.2rem;
+  margin: 0.6rem 0;
+}
+.mode-block legend { font-weight: 600; padding: 0 0.3rem; }
+.filter-row.hint {
+  font-size: 0.8rem; color: #6b7280; margin-top: -0.3rem;
+}
+.filter-row.hint code {
+  background: #f3f4f6; padding: 0.05rem 0.3rem; border-radius: 3px;
+}
