@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using NEW_STATISTIC.Core.Abstractions;
 using NEW_STATISTIC.Core.Options;
 
 namespace NEW_STATISTIC.Worker.Telegram;
@@ -28,7 +29,7 @@ public sealed class TelegramChannelStore : IDisposable
     private List<TelegramChannel> _channels = new();
     private decimal _globalMinTriggerDiffPercent;
     private int     _globalMaxTpAgeMs;
-    private decimal[] _globalTriggerOpenOffsets = Array.Empty<decimal>();
+    private OpenOffsetRange[] _globalTriggerOpenOffsetRanges = Array.Empty<OpenOffsetRange>();
 
     public event Action? ConfigChanged;
 
@@ -72,7 +73,7 @@ public sealed class TelegramChannelStore : IDisposable
 
     public decimal GlobalMinTriggerDiffPercent { get { lock (_lock) return _globalMinTriggerDiffPercent; } }
     public int     GlobalMaxTpAgeMs            { get { lock (_lock) return _globalMaxTpAgeMs; } }
-    public IReadOnlyList<decimal> GlobalTriggerOpenOffsets { get { lock (_lock) return _globalTriggerOpenOffsets.ToArray(); } }
+    public IReadOnlyList<OpenOffsetRange> GlobalTriggerOpenOffsetRanges { get { lock (_lock) return _globalTriggerOpenOffsetRanges.ToArray(); } }
 
     public string FilePath => _filePath;
 
@@ -125,7 +126,7 @@ public sealed class TelegramChannelStore : IDisposable
             decimal minDiff = 0m;
             int     maxAge  = 0;
             bool    anyTrig = false;
-            var offsets = new SortedSet<decimal>();
+            var ranges = new List<OpenOffsetRange>();
             foreach (var c in channels)
             {
                 if (!c.Enabled) continue;
@@ -134,7 +135,12 @@ public sealed class TelegramChannelStore : IDisposable
                 var offset = Math.Max(0m, c.Trigger.DistanceMin);
                 if (offset > 0m)
                 {
-                    offsets.Add(offset);
+                    var max = c.Trigger.DistanceMax > 0m
+                        ? Math.Max(offset, c.Trigger.DistanceMax)
+                        : 0m;
+                    var range = new OpenOffsetRange(offset, max);
+                    if (!ranges.Contains(range))
+                        ranges.Add(range);
                     if (minDiff == 0m || offset < minDiff)
                         minDiff = offset;
                 }
@@ -147,7 +153,10 @@ public sealed class TelegramChannelStore : IDisposable
                 _channels = channels;
                 _globalMinTriggerDiffPercent = minDiff;
                 _globalMaxTpAgeMs = maxAge;
-                _globalTriggerOpenOffsets = offsets.ToArray();
+                _globalTriggerOpenOffsetRanges = ranges
+                    .OrderBy(r => r.MinPercent)
+                    .ThenBy(r => r.MaxPercent)
+                    .ToArray();
             }
 
             if (!silent)

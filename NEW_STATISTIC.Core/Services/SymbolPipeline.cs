@@ -185,8 +185,8 @@ public sealed class SymbolPipeline
         var totalQuote = inWin.Sum(t => t.Price * t.Quantity);
         var duration   = Math.Max(1, p.WindowEndMs - p.WindowStartMs);
         var density    = totalQuote / duration;
-        var diffPct    = min <= 0 ? 0 : (max - min) / min * 100m;
         var side       = CandleSideResolver.Resolve(first.Price, min, max);
+        var diffPct    = CalculateDirectionalDiffPercent(side, min, max);
 
         p.SetWindowData(
             refMs:       last.TradeTimeMs,
@@ -245,20 +245,49 @@ public sealed class SymbolPipeline
         var horizonEnd = shot.ReferenceTimeMs + fastMs;
         var trades     = _buffer.TradesAfterBefore(shot.ReferenceTimeMs, horizonEnd);
 
-        var offsets = _shotObserver?.OpenOffsetPercents ?? Array.Empty<decimal>();
-        foreach (var offset in offsets)
+        var outcomes = new List<ShotOutcomeEvent>();
+        foreach (var offset in BuildOpenOffsets(shot.DiffPercent))
         {
-            if (offset <= 0m || shot.DiffPercent < offset)
-            {
-                continue;
-            }
-
-            var ev = ResolveShotAtOffset(shot, trades, offset);
-            try { _shotObserver?.OnShotResolved(ev); }
-            catch { /* best-effort */ }
+            outcomes.Add(ResolveShotAtOffset(shot, trades, offset));
         }
 
+        if (outcomes.Count > 0)
+        {
+            try { _shotObserver?.OnShotResolved(outcomes); }
+            catch { /* best-effort */ }
+        }
         p.ShotResolved = true;
+    }
+
+    private IReadOnlyList<decimal> BuildOpenOffsets(decimal shotDiffPercent)
+    {
+        var ranges = _shotObserver?.OpenOffsetRanges ?? Array.Empty<OpenOffsetRange>();
+        if (ranges.Count == 0 || shotDiffPercent <= 0m)
+            return Array.Empty<decimal>();
+
+        var step = _opt.SimulationOpenStepPercent > 0m
+            ? _opt.SimulationOpenStepPercent
+            : 0.1m;
+
+        var offsets = new SortedSet<decimal>();
+        foreach (var range in ranges)
+        {
+            var min = Math.Max(0m, range.MinPercent);
+            if (min <= 0m || shotDiffPercent < min)
+                continue;
+
+            var max = range.MaxPercent > 0m
+                ? Math.Min(range.MaxPercent, shotDiffPercent)
+                : shotDiffPercent;
+
+            if (max < min)
+                continue;
+
+            for (var offset = min; offset <= max + 0.000001m; offset += step)
+                offsets.Add(Math.Round(offset, 6));
+        }
+
+        return offsets.ToArray();
     }
 
     private ShotOutcomeEvent ResolveShotAtOffset(
@@ -321,6 +350,21 @@ public sealed class SymbolPipeline
         var tp   = open * (1m - (openOffsetPercent * tpRatio) / 100m);
         var sl   = open * (1m + (openOffsetPercent * slRatio) / 100m);
         return (open, tp, sl);
+    }
+
+    private static decimal CalculateDirectionalDiffPercent(
+        CandleSide side,
+        decimal minPrice,
+        decimal maxPrice)
+    {
+        if (minPrice <= 0m || maxPrice <= 0m)
+            return 0m;
+
+        var diff = side == CandleSide.Buy
+            ? (maxPrice - minPrice) / maxPrice * 100m
+            : (maxPrice - minPrice) / minPrice * 100m;
+
+        return Math.Max(0m, diff);
     }
 
     /// <summary>

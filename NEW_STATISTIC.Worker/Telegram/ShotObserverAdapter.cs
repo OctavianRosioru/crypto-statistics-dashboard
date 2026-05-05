@@ -25,7 +25,7 @@ public sealed class ShotObserverAdapter : IShotObserver
 
     public decimal MinDiffPercent => _store.GlobalMinTriggerDiffPercent;
     public int FastFollowUpMs    => _store.GlobalMaxTpAgeMs;
-    public IReadOnlyList<decimal> OpenOffsetPercents => _store.GlobalTriggerOpenOffsets;
+    public IReadOnlyList<OpenOffsetRange> OpenOffsetRanges => _store.GlobalTriggerOpenOffsetRanges;
 
     public void OnShotDetected(ShotEvent shot)
     {
@@ -33,8 +33,8 @@ public sealed class ShotObserverAdapter : IShotObserver
         // Hook lăsat pentru extensii viitoare (ex. preview message).
     }
 
-    public void OnShotResolved(ShotOutcomeEvent outcome)
+    public void OnShotResolved(IReadOnlyList<ShotOutcomeEvent> outcomes)
     {
-        _buffer.Add(outcome);
+        _buffer.AddRange(outcomes);
     }
 }

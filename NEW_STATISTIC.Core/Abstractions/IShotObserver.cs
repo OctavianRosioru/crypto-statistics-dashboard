@@ -2,6 +2,8 @@ using NEW_STATISTIC.Core.Domain;
 
 namespace NEW_STATISTIC.Core.Abstractions;
 
+public readonly record struct OpenOffsetRange(decimal MinPercent, decimal MaxPercent);
+
 /// <summary>
 /// Observer pentru drumul rapid Telegram trigger: SymbolPipeline anunță aici fiecare shot
 /// imediat ce datele ferestrei sunt calculate, apoi (după FastFollowUpMs) raportează outcome-ul
@@ -9,7 +11,7 @@ namespace NEW_STATISTIC.Core.Abstractions;
 ///
 /// Ca să nu emitem evenimente inutile când nu există canale trigger active, pipeline-ul
 /// consultă <see cref="MinDiffPercent"/>, <see cref="FastFollowUpMs"/> și
-/// <see cref="OpenOffsetPercents"/> înainte de orice
+/// <see cref="OpenOffsetRanges"/> înainte de orice
 /// muncă: dacă pragul e &gt; 0 dar diff-ul shotului e sub el, sau dacă FastFollowUpMs &lt;= 0,
 /// evenimentul e ignorat.
 /// </summary>
@@ -28,10 +30,11 @@ public interface IShotObserver
     int FastFollowUpMs { get; }
 
     /// <summary>
-    /// Offset-urile de intrare configurate de canalele trigger active.
-    /// Outcome-ul rapid este calculat pentru fiecare offset, nu pentru apex-ul shotului.
+    /// Range-urile de intrare configurate de canalele trigger active.
+    /// Outcome-ul rapid este calculat pentru offseturile simulate din aceste range-uri,
+    /// nu pentru apex-ul shotului.
     /// </summary>
-    IReadOnlyList<decimal> OpenOffsetPercents { get; }
+    IReadOnlyList<OpenOffsetRange> OpenOffsetRanges { get; }
 
     /// <summary>
     /// Notifică un shot proaspăt detectat (fereastra închisă, datele cunoscute, dar fără outcome încă).
@@ -40,7 +43,8 @@ public interface IShotObserver
     void OnShotDetected(ShotEvent shot);
 
     /// <summary>
-    /// Notifică outcome-ul rapid (TP/SL/None) după ce a expirat FastFollowUpMs de la ReferenceTimeMs.
+    /// Notifică outcome-urile rapide (TP/SL/None) după ce a expirat FastFollowUpMs de la ReferenceTimeMs.
+    /// Un shot poate avea mai multe outcome-uri, câte unul pentru fiecare offset simulat.
     /// </summary>
-    void OnShotResolved(ShotOutcomeEvent outcome);
+    void OnShotResolved(IReadOnlyList<ShotOutcomeEvent> outcomes);
 }

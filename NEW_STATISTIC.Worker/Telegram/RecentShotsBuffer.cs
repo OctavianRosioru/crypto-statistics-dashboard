@@ -27,20 +27,31 @@ public sealed class RecentShotsBuffer
 
     public void Add(ShotOutcomeEvent ev)
     {
-        if (MinDiffPercent > 0m && ev.Shot.DiffPercent < MinDiffPercent) return;
+        AddRange([ev]);
+    }
+
+    public void AddRange(IReadOnlyList<ShotOutcomeEvent> events)
+    {
+        var accepted = events
+            .Where(ev => MinDiffPercent <= 0m || ev.Shot.DiffPercent >= MinDiffPercent)
+            .ToList();
+        if (accepted.Count == 0) return;
 
         var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var cutoff = nowMs - _retentionMs;
 
         lock (_lock)
         {
-            _list.AddLast(ev);
+            foreach (var ev in accepted)
+                _list.AddLast(ev);
+
             // prune
             while (_list.First is { } first && first.Value.Shot.ReferenceTimeMs < cutoff)
                 _list.RemoveFirst();
         }
 
-        ShotClassified?.Invoke(ev);
+        foreach (var ev in accepted)
+            ShotClassified?.Invoke(ev);
     }
 
     /// <summary>

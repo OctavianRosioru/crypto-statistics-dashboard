@@ -58,7 +58,7 @@ function renderChannels(channels) {
       const t = ch.trigger;
       const range = t.distanceMax > 0 ? `${t.distanceMin}–${t.distanceMax}%` : `≥${t.distanceMin}%`;
       const syms = t.symbols && t.symbols.length ? t.symbols.join(", ") : "all";
-      meta = `<code>${t.exchange}</code> · <code>${t.side}</code> · ${range} · ≥${t.minShots} in ${t.windowSeconds}s · TP≤${t.maxTpAgeMs}ms · cd ${t.cooldownSeconds}s · syms: ${syms}`;
+      meta = `<code>${t.exchange}</code> · <code>${t.side}</code> · entries ${range} · ≥${t.minTpCount} TP shots in ${t.windowSeconds}s · TP≤${t.maxTpAgeMs}ms · cd ${t.cooldownSeconds}s · syms: ${syms}`;
     } else if (ch.mode === "Statistic" && ch.statistic) {
       const s = ch.statistic;
       const range = `${(s.skip ?? 0) + 1}–${(s.skip ?? 0) + (s.topN ?? 20)}`;

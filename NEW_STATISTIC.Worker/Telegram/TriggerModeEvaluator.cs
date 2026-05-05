@@ -7,7 +7,7 @@ namespace NEW_STATISTIC.Worker.Telegram;
 /// <summary>
 /// Evaluator pentru canalele Telegram în mod trigger.
 /// Se abonează la <see cref="RecentShotsBuffer.ShotClassified"/> și, la fiecare shot nou,
-/// evaluează pattern-ul fiecărui canal: ≥ MinTpCount TP-uri în fereastră AND (opțional) P&L net pozitiv.
+/// evaluează pattern-ul fiecărui canal: ≥ MinTpCount shoturi cu TP în fereastră AND (opțional) P&L net pozitiv.
 /// SL-urile și None-urile NU invalidează pattern-ul — ele intră doar în calculul net-ului.
 /// </summary>
 public sealed class TriggerModeEvaluator : IHostedService
@@ -64,7 +64,7 @@ public sealed class TriggerModeEvaluator : IHostedService
 
             // 1. Filtru de bază pe ULTIMUL shot — fără el nu are rost să mai numărăm.
             if (!ShotMatchesFilters(latest, t)) continue;
-            if (!OffsetMatchesChannel(latest, t)) continue;
+            if (!OffsetMatchesChannelRange(latest, t)) continue;
 
             // 2. Adun toate shoturile din fereastră care îndeplinesc filtrele
             //    (NU ne uităm la outcome aici — TPs, SLs și Nones intră toate la calcul).
@@ -72,25 +72,33 @@ public sealed class TriggerModeEvaluator : IHostedService
             var matches  = _buffer
                 .SnapshotForSymbol(latest.Shot.Exchange, latest.Shot.Symbol, windowMs)
                 .Where(x => ShotMatchesFilters(x, t))
-                .Where(x => OffsetMatchesChannel(x, t))
+                .Where(x => OffsetMatchesChannelRange(x, t))
                 .ToList();
 
-            // 3. Numără TP / calculează net P&L. Folosim PnlPercent precalculat pe shot:
+            // 3. Numără TP / calculează net P&L o singură dată per shot fizic.
+            //    Un shot cu DiffPercent mare poate avea multe offseturi în range, dar pentru Pattern
+            //    contează ca un singur shot.
+            var shotResults = matches
+                .GroupBy(MakeShotKey)
+                .Select(g => AggregateRangeShot(g))
+                .ToList();
+
+            // Folosim PnlPercent precalculat pe outcome-ul reprezentativ:
             //    TP = +diff × tpRatio (limit order, execuție exactă la țintă);
             //    SL = pierdere REALĂ pe baza prețului care a traversat SL (slippage inclus, semn negativ).
             int tpCount = 0, slCount = 0, noneCount = 0;
             double net = 0;
-            foreach (var m in matches)
+            foreach (var result in shotResults)
             {
-                switch (m.Outcome)
+                switch (result.Outcome.Outcome)
                 {
                     case OutcomeKind.TakeProfit:
                         tpCount++;
-                        if (m.PnlPercent.HasValue) net += m.PnlPercent.Value;
+                        if (result.Outcome.PnlPercent.HasValue) net += result.Outcome.PnlPercent.Value;
                         break;
                     case OutcomeKind.StopLoss:
                         slCount++;
-                        if (m.PnlPercent.HasValue) net += m.PnlPercent.Value; // deja semnat negativ
+                        if (result.Outcome.PnlPercent.HasValue) net += result.Outcome.PnlPercent.Value; // deja semnat negativ
                         break;
                     default:
                         noneCount++;
@@ -111,7 +119,11 @@ public sealed class TriggerModeEvaluator : IHostedService
             }
             _cooldown[key] = nowMs;
 
-            var msg = FormatMessage(t.MessageFormat, latest, tpCount, slCount, noneCount, net);
+            var messageOutcome = shotResults
+                .Where(r => MakeShotKey(r.Outcome) == MakeShotKey(latest))
+                .Select(r => r.Outcome)
+                .FirstOrDefault() ?? latest;
+            var msg = FormatMessage(t.MessageFormat, messageOutcome, tpCount, slCount, noneCount, net);
             _ = SendAsync(ch, msg);
         }
     }
@@ -136,10 +148,43 @@ public sealed class TriggerModeEvaluator : IHostedService
         return true;
     }
 
-    private static bool OffsetMatchesChannel(ShotOutcomeEvent ev, TelegramTriggerConfig t)
+    private static bool OffsetMatchesChannelRange(ShotOutcomeEvent ev, TelegramTriggerConfig t)
     {
-        var targetOffset = Math.Max(0m, t.DistanceMin);
-        return Math.Abs(ev.OpenOffsetPercent - targetOffset) <= 0.000001m;
+        var min = Math.Max(0m, t.DistanceMin);
+        var max = t.DistanceMax > 0m ? Math.Max(min, t.DistanceMax) : 0m;
+        return ev.OpenOffsetPercent >= min - 0.000001m &&
+            (max <= 0m || ev.OpenOffsetPercent <= max + 0.000001m);
+    }
+
+    private static ShotKey MakeShotKey(ShotOutcomeEvent ev) =>
+        new(
+            ev.Shot.Exchange,
+            ev.Shot.Symbol,
+            ev.Shot.TriggerTimeMs,
+            ev.Shot.ReferenceTimeMs,
+            ev.Shot.Side);
+
+    private static RangeShotResult AggregateRangeShot(IEnumerable<ShotOutcomeEvent> outcomes)
+    {
+        var ordered = outcomes
+            .OrderBy(x => x.OpenOffsetPercent)
+            .ToList();
+
+        var tp = ordered
+            .Where(x => x.Outcome == OutcomeKind.TakeProfit)
+            .OrderByDescending(x => x.PnlPercent ?? double.MinValue)
+            .ThenBy(x => x.OpenOffsetPercent)
+            .FirstOrDefault();
+        if (tp is not null) return new RangeShotResult(tp);
+
+        var sl = ordered
+            .Where(x => x.Outcome == OutcomeKind.StopLoss)
+            .OrderBy(x => x.PnlPercent ?? double.MaxValue)
+            .ThenBy(x => x.OpenOffsetPercent)
+            .FirstOrDefault();
+        if (sl is not null) return new RangeShotResult(sl);
+
+        return new RangeShotResult(ordered[0]);
     }
 
     private static string FormatMessage(
@@ -174,4 +219,13 @@ public sealed class TriggerModeEvaluator : IHostedService
             _log.LogWarning(ex, "Telegram trigger send failed for channel {Ch}", ch.Name);
         }
     }
+
+    private readonly record struct ShotKey(
+        string Exchange,
+        string Symbol,
+        long TriggerTimeMs,
+        long ReferenceTimeMs,
+        CandleSide Side);
+
+    private sealed record RangeShotResult(ShotOutcomeEvent Outcome);
 }
