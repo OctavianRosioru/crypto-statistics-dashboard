@@ -1,3 +1,487 @@
 {
-  "Channels": []
+  "Channels": [
+    {
+      "Id": "b3c0a8e6f5a24d3f9f4c4f4d2e6a0500",
+      "Name": "0.5",
+      "Enabled": true,
+      "ChatId": "-1003988489914",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 0.5,
+        "DistanceMax": 1,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "c0f672bbd26e4db8a26fb1a0d4b50100",
+      "Name": "1",
+      "Enabled": true,
+      "ChatId": "-1003737930513",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 1,
+        "DistanceMax": 1.5,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "2e3c2570a20f4cf99f5b9c2d66a00150",
+      "Name": "1.5",
+      "Enabled": true,
+      "ChatId": "-1003377485662",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 1.5,
+        "DistanceMax": 2,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "a4d3d3f935a7472282b5c2d7e7a00200",
+      "Name": "2",
+      "Enabled": true,
+      "ChatId": "-1003713689310",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 2,
+        "DistanceMax": 2.5,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "00f9f739a0ad4b70abc91c0cf7200250",
+      "Name": "2.5",
+      "Enabled": true,
+      "ChatId": "-1003954952630",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 2.5,
+        "DistanceMax": 3,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "78b20bcf42d34d67bb7360956c600300",
+      "Name": "3",
+      "Enabled": true,
+      "ChatId": "-1003809392238",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 3,
+        "DistanceMax": 3.5,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "7d35b746cb36473ebf5271f5a6a00350",
+      "Name": "3.5",
+      "Enabled": true,
+      "ChatId": "-1003740794677",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 3.5,
+        "DistanceMax": 4,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "418ed87e26c1462299410f3e2c900400",
+      "Name": "4",
+      "Enabled": true,
+      "ChatId": "-1003826913964",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 4,
+        "DistanceMax": 4.5,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "89b2b992a4454d26a630681a39900450",
+      "Name": "4.5",
+      "Enabled": true,
+      "ChatId": "-1003754360858",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 4.5,
+        "DistanceMax": 5,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "80f6d2fbf4e04d9da51e21184bb00500",
+      "Name": "5",
+      "Enabled": true,
+      "ChatId": "-1003769026990",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 5,
+        "DistanceMax": 5.5,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "84b7e56510294fa08f78824857100550",
+      "Name": "5.5",
+      "Enabled": true,
+      "ChatId": "-1003971886016",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 5.5,
+        "DistanceMax": 6,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "4f1868e6e5164ee29f21a650cd800600",
+      "Name": "6",
+      "Enabled": true,
+      "ChatId": "-1003742746817",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 6,
+        "DistanceMax": 6.5,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "f6cb07890a364d8d8ff79014dd600650",
+      "Name": "6.5",
+      "Enabled": true,
+      "ChatId": "-1003954917866",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 6.5,
+        "DistanceMax": 7,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "13b44b1b015042ed875795a494c00700",
+      "Name": "7",
+      "Enabled": true,
+      "ChatId": "-1003304045361",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 7,
+        "DistanceMax": 7.5,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "5d2bb60f832949d5834a58d9ef800750",
+      "Name": "7.5",
+      "Enabled": true,
+      "ChatId": "-1003915496719",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 7.5,
+        "DistanceMax": 8,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "5c0e14b7994d4d34b7a203f615000800",
+      "Name": "8",
+      "Enabled": true,
+      "ChatId": "-1003651824828",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 8,
+        "DistanceMax": 8.5,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "c5a82561b3d043f08b86377f36300850",
+      "Name": "8.5",
+      "Enabled": true,
+      "ChatId": "-1003344759289",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 8.5,
+        "DistanceMax": 9,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "f695e0f315734f8e9567eeec5b700900",
+      "Name": "9",
+      "Enabled": true,
+      "ChatId": "-1003888738810",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 9,
+        "DistanceMax": 9.5,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "c9019b891b614f528fce5dc327900950",
+      "Name": "9.5",
+      "Enabled": true,
+      "ChatId": "-1003839895132",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 9.5,
+        "DistanceMax": 10,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "1f47d94dc5774b52b72f07a9bf001000",
+      "Name": "10",
+      "Enabled": true,
+      "ChatId": "-1003827730441",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 10,
+        "DistanceMax": 14,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "b5e6724859c147e1bb5b5833fd59c370",
+      "Name": "14",
+      "Enabled": true,
+      "ChatId": "-1003970356004",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 14,
+        "DistanceMax": 18,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "b6fb5de624bd418bb0d5045ecdc01800",
+      "Name": "18",
+      "Enabled": true,
+      "ChatId": "-1003807027435",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 18,
+        "DistanceMax": 20,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    },
+    {
+      "Id": "ce30cf856994495aab0d746cfef02000",
+      "Name": "20",
+      "Enabled": true,
+      "ChatId": "-1003956659188",
+      "Mode": "Trigger",
+      "Trigger": {
+        "Exchange": "BINANCE",
+        "Symbols": [],
+        "Side": "Any",
+        "DistanceMin": 20,
+        "DistanceMax": 30,
+        "WindowSeconds": 60,
+        "MinTpCount": 1,
+        "RequirePositiveNet": true,
+        "MaxTpAgeMs": 300000,
+        "CooldownSeconds": 300,
+        "MessageFormat": "{exchange} {symbol} {side} FUTURES"
+      },
+      "Statistic": null
+    }
+  ]
 }

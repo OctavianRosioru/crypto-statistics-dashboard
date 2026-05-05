@@ -142,9 +142,10 @@ public sealed class SymbolPipeline
                     // observer dezactivat între timp — marchează rezolvat ca să nu mai încercăm
                     p.ShotResolved = true;
                 }
-                else if ((DateTime.UtcNow - p.WindowDataComputedUtc).TotalMilliseconds >= fastMs)
+                else
                 {
-                    ResolveShotFast(p, fastMs);
+                    var expired = (DateTime.UtcNow - p.WindowDataComputedUtc).TotalMilliseconds >= fastMs;
+                    ResolveShotFast(p, fastMs, expired);
                 }
             }
 
@@ -233,22 +234,31 @@ public sealed class SymbolPipeline
     }
 
     /// <summary>
-    /// După ce a expirat fereastra rapidă (FastFollowUpMs), determinăm TP/SL/None
-    /// folosind aceeași logică de prețuri ca SimulationEngine, pentru offset-urile
-    /// de intrare configurate de canalele Telegram trigger.
+    /// Determină TP/SL imediat ce pragul este traversat. None este emis doar la expirarea
+    /// ferestrei rapide (FastFollowUpMs), ca să nu întârziem semnalele TP.
     /// </summary>
-    private void ResolveShotFast(PendingCandle p, int fastMs)
+    private void ResolveShotFast(PendingCandle p, int fastMs, bool expired)
     {
         if (p.Shot is null) return;
         var shot = p.Shot;
 
         var horizonEnd = shot.ReferenceTimeMs + fastMs;
-        var trades     = _buffer.TradesAfterBefore(shot.ReferenceTimeMs, horizonEnd);
+        var availableEnd = Math.Min(_maxTradeTimeMs, horizonEnd);
+        var trades       = _buffer.TradesAfterBefore(shot.ReferenceTimeMs, availableEnd);
+        var offsets      = BuildOpenOffsets(shot.DiffPercent);
 
         var outcomes = new List<ShotOutcomeEvent>();
-        foreach (var offset in BuildOpenOffsets(shot.DiffPercent))
+        foreach (var offset in offsets)
         {
-            outcomes.Add(ResolveShotAtOffset(shot, trades, offset));
+            if (p.ResolvedOpenOffsets.Contains(offset))
+                continue;
+
+            var outcome = ResolveShotAtOffset(shot, trades, offset);
+            if (outcome.Outcome == OutcomeKind.None && !expired)
+                continue;
+
+            outcomes.Add(outcome);
+            p.ResolvedOpenOffsets.Add(offset);
         }
 
         if (outcomes.Count > 0)
@@ -256,7 +266,9 @@ public sealed class SymbolPipeline
             try { _shotObserver?.OnShotResolved(outcomes); }
             catch { /* best-effort */ }
         }
-        p.ShotResolved = true;
+
+        if (p.ResolvedOpenOffsets.Count >= offsets.Count)
+            p.ShotResolved = true;
     }
 
     private IReadOnlyList<decimal> BuildOpenOffsets(decimal shotDiffPercent)
@@ -437,6 +449,7 @@ public sealed class SymbolPipeline
         public ShotEvent? Shot { get; set; }
         public bool ShotEmitted { get; set; }
         public bool ShotResolved { get; set; }
+        public HashSet<decimal> ResolvedOpenOffsets { get; } = new();
 
         public void SetWindowData(long refMs, decimal min, decimal max, decimal diffPct,
                                   CandleSide side, decimal firstPrice,

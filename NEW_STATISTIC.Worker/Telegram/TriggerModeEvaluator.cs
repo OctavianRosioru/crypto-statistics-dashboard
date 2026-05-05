@@ -12,6 +12,8 @@ namespace NEW_STATISTIC.Worker.Telegram;
 /// </summary>
 public sealed class TriggerModeEvaluator : IHostedService
 {
+    private const int MinTpLeadPercent = 25;
+
     private readonly RecentShotsBuffer _buffer;
     private readonly TelegramChannelStore _store;
     private readonly TelegramClient _telegram;
@@ -83,6 +85,13 @@ public sealed class TriggerModeEvaluator : IHostedService
                 .Select(g => AggregateRangeShot(g))
                 .ToList();
 
+            var latestShotResult = shotResults
+                .Where(r => MakeShotKey(r.Outcome) == MakeShotKey(latest))
+                .Select(r => r.Outcome)
+                .FirstOrDefault();
+            if (latestShotResult is null || latestShotResult.Outcome != OutcomeKind.TakeProfit)
+                continue;
+
             // Folosim PnlPercent precalculat pe outcome-ul reprezentativ:
             //    TP = +diff × tpRatio (limit order, execuție exactă la țintă);
             //    SL = pierdere REALĂ pe baza prețului care a traversat SL (slippage inclus, semn negativ).
@@ -109,6 +118,7 @@ public sealed class TriggerModeEvaluator : IHostedService
             // 4. Verifică pragurile.
             if (tpCount < Math.Max(1, t.MinTpCount)) continue;
             if (t.RequirePositiveNet && net <= 0) continue;
+            if (!HasMinimumTpLead(tpCount, slCount)) continue;
 
             // 5. Cooldown per (canal, simbol).
             var key = (ch.Id, latest.Shot.Symbol);
@@ -119,11 +129,7 @@ public sealed class TriggerModeEvaluator : IHostedService
             }
             _cooldown[key] = nowMs;
 
-            var messageOutcome = shotResults
-                .Where(r => MakeShotKey(r.Outcome) == MakeShotKey(latest))
-                .Select(r => r.Outcome)
-                .FirstOrDefault() ?? latest;
-            var msg = FormatMessage(t.MessageFormat, messageOutcome, tpCount, slCount, noneCount, net);
+            var msg = FormatMessage(t.MessageFormat, latestShotResult, tpCount, slCount, noneCount, net);
             _ = SendAsync(ch, msg);
         }
     }
@@ -154,6 +160,14 @@ public sealed class TriggerModeEvaluator : IHostedService
         var max = t.DistanceMax > 0m ? Math.Max(min, t.DistanceMax) : 0m;
         return ev.OpenOffsetPercent >= min - 0.000001m &&
             (max <= 0m || ev.OpenOffsetPercent <= max + 0.000001m);
+    }
+
+    private static bool HasMinimumTpLead(int tpCount, int slCount)
+    {
+        if (tpCount <= 0) return false;
+        if (slCount <= 0) return true;
+
+        return tpCount * 100 > slCount * (100 + MinTpLeadPercent);
     }
 
     private static ShotKey MakeShotKey(ShotOutcomeEvent ev) =>
