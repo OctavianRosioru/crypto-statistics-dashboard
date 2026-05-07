@@ -73,6 +73,9 @@ public sealed class TelegramTriggerConfig
     /// <summary>Cât așteptăm după shot pentru TP (ms). Determină și fereastra fast-followup.</summary>
     public int MaxTpAgeMs { get; set; } = 1500;
 
+    /// <summary>Perioada din DB folosită pentru verificarea statisticii înainte de trigger (1, 3, 7, 14 sau 30 zile).</summary>
+    public int StatsLookbackDays { get; set; } = 1;
+
     /// <summary>Anti-spam per (canal, simbol).</summary>
     public int CooldownSeconds { get; set; } = 30;
 

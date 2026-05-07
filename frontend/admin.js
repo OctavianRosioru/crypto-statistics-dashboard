@@ -10,6 +10,12 @@ function setStatus(text, isError = false) {
   status.style.color = isError ? "#b91c1c" : "#374151";
 }
 
+const allowedStatsLookbackDays = new Set([1, 3, 7, 14, 30]);
+function normalizeStatsLookbackDays(value) {
+  const days = Number(value);
+  return allowedStatsLookbackDays.has(days) ? days : 1;
+}
+
 async function api(path, method = "GET", body = null) {
   const opts = { method, headers: { "Content-Type": "application/json" } };
   if (body !== null) opts.body = JSON.stringify(body);
@@ -58,7 +64,7 @@ function renderChannels(channels) {
       const t = ch.trigger;
       const range = t.distanceMax > 0 ? `${t.distanceMin}–${t.distanceMax}%` : `≥${t.distanceMin}%`;
       const syms = t.symbols && t.symbols.length ? t.symbols.join(", ") : "all";
-      meta = `<code>${t.exchange}</code> · <code>${t.side}</code> · entries ${range} · ≥${t.minTpCount} TP shots in ${t.windowSeconds}s · TP≤${t.maxTpAgeMs}ms · cd ${t.cooldownSeconds}s · syms: ${syms}`;
+      meta = `<code>${t.exchange}</code> · <code>${t.side}</code> · entries ${range} · ≥${t.minTpCount} TP shots in ${t.windowSeconds}s · stats ${normalizeStatsLookbackDays(t.statsLookbackDays ?? 1)}d · TP≤${t.maxTpAgeMs}ms · cd ${t.cooldownSeconds}s · syms: ${syms}`;
     } else if (ch.mode === "Statistic" && ch.statistic) {
       const s = ch.statistic;
       const range = `${(s.skip ?? 0) + 1}–${(s.skip ?? 0) + (s.topN ?? 20)}`;
@@ -137,6 +143,7 @@ function resetTriggerForm() {
   $("t_window").value = "60";
   $("t_posNet").checked = true;
   $("t_maxTpAge").value = "1500";
+  $("t_statsDays").value = "1";
   $("t_cooldown").value = "30";
   $("t_msg").value = "#{exchange} #{symbol} {side} #{distance}";
 }
@@ -151,6 +158,7 @@ function fillTriggerForm(t) {
   $("t_window").value = t.windowSeconds ?? 60;
   $("t_posNet").checked = t.requirePositiveNet !== false;
   $("t_maxTpAge").value = t.maxTpAgeMs ?? 1500;
+  $("t_statsDays").value = String(normalizeStatsLookbackDays(t.statsLookbackDays ?? 1));
   $("t_cooldown").value = t.cooldownSeconds ?? 30;
   $("t_msg").value = t.messageFormat || "#{exchange} #{symbol} {side} #{distance}";
 }
@@ -229,6 +237,7 @@ function readForm() {
       windowSeconds: Number($("t_window").value) || 60,
       requirePositiveNet: $("t_posNet").checked,
       maxTpAgeMs: Number($("t_maxTpAge").value) || 1500,
+      statsLookbackDays: normalizeStatsLookbackDays($("t_statsDays").value),
       cooldownSeconds: Number($("t_cooldown").value) || 0,
       messageFormat: $("t_msg").value || "#{exchange} #{symbol} {side} #{distance}",
     };

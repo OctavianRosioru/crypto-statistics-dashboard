@@ -85,6 +85,16 @@
               <input id="t_maxTpAge" type="number" min="100" step="100" value="1500" class="filter-input narrow" /><span class="unit">max TP age ms</span>
             </div>
             <div class="filter-row">
+              <label class="filter-label">Stats check</label>
+              <select id="t_statsDays" class="filter-select">
+                <option value="1">Last day</option>
+                <option value="3">Last 3 days</option>
+                <option value="7">Last 7 days</option>
+                <option value="14">Last 14 days</option>
+                <option value="30">Last 30 days</option>
+              </select>
+            </div>
+            <div class="filter-row">
               <label class="filter-label">Cooldown</label>
               <input id="t_cooldown" type="number" min="0" value="30" class="filter-input narrow" /><span class="unit">sec</span>
             </div>
