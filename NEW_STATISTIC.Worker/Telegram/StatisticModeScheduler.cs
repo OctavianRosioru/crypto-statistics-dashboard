@@ -190,7 +190,34 @@ public sealed class StatisticModeScheduler : BackgroundService
             .Replace("{tp}",       s.Tp.ToString())
             .Replace("{sl}",       s.Sl.ToString())
             .Replace("{shots}",    s.Shots.ToString())
-            .Replace("{net}",      sign + s.Net.ToString("F2"));
+            .Replace("{net}",      sign + s.Net.ToString("F2"))
+            .Replace("{qav}",      FormatQav(s.QuoteVolume24h.QuoteVolume24hUsdt))
+            .Replace("{qav_chg_1m}",  FormatQavChange(s.QuoteVolume24h.Change1mPct))
+            .Replace("{qav_chg_5m}",  FormatQavChange(s.QuoteVolume24h.Change5mPct))
+            .Replace("{qav_chg_15m}", FormatQavChange(s.QuoteVolume24h.Change15mPct))
+            .Replace("{qav_chg_30m}", FormatQavChange(s.QuoteVolume24h.Change30mPct))
+            .Replace("{qav_chg_1h}",  FormatQavChange(s.QuoteVolume24h.Change1hPct))
+            .Replace("{qav_chg_3h}",  FormatQavChange(s.QuoteVolume24h.Change3hPct))
+            .Replace("{qav_chg_6h}",  FormatQavChange(s.QuoteVolume24h.Change6hPct))
+            .Replace("{qav_chg_12h}", FormatQavChange(s.QuoteVolume24h.Change12hPct))
+            .Replace("{qav_chg_24h}", FormatQavChange(s.QuoteVolume24h.Change24hPct));
+    }
+
+    private static string FormatQav(decimal? value)
+    {
+        if (value is null) return "n/a";
+        var v = value.Value;
+        if (v >= 1_000_000_000m) return (v / 1_000_000_000m).ToString("0.##") + "B";
+        if (v >= 1_000_000m) return (v / 1_000_000m).ToString("0.##") + "M";
+        if (v >= 1_000m) return (v / 1_000m).ToString("0.##") + "k";
+        return v.ToString("0.##");
+    }
+
+    private static string FormatQavChange(decimal? value)
+    {
+        if (value is null) return "n/a";
+        var sign = value.Value >= 0m ? "+" : "";
+        return sign + value.Value.ToString("0.##") + "%";
     }
 
     private static TimeSpan GetFrequencyInterval(int frequencyHours)
@@ -232,6 +259,9 @@ public sealed class StatisticModeScheduler : BackgroundService
                 && _ch.Statistic.DistanceMax      == other.Statistic.DistanceMax
                 && _ch.Statistic.MinQuoteUsdt     == other.Statistic.MinQuoteUsdt
                 && _ch.Statistic.HorizonSec       == other.Statistic.HorizonSec
+                && _ch.Statistic.QavChangeLookbackMinutes == other.Statistic.QavChangeLookbackMinutes
+                && _ch.Statistic.QavChangeMinPercent == other.Statistic.QavChangeMinPercent
+                && _ch.Statistic.QavChangeMaxPercent == other.Statistic.QavChangeMaxPercent
                 && _ch.Statistic.MessageFormat    == other.Statistic.MessageFormat
                 && _ch.Statistic.DelayBetweenMessagesMs == other.Statistic.DelayBetweenMessagesMs
                 && SymbolsEqual(_ch.Statistic.Symbols, other.Statistic.Symbols);

@@ -15,6 +15,7 @@ public sealed class MarketPipelineHostedService : BackgroundService
     private readonly IOptions<TradingOptions> _options;
     private readonly IPersistenceSink _sink;
     private readonly IShotObserver? _shotObserver;
+    private readonly IQuoteVolume24hProvider _quoteVolume24h;
     private readonly TradeIngestMetrics _metrics;
     private readonly ILogger<MarketPipelineHostedService> _log;
     private readonly ConcurrentDictionary<string, SymbolPipeline> _pipelines = new();
@@ -25,6 +26,7 @@ public sealed class MarketPipelineHostedService : BackgroundService
         IOptions<TradingOptions> options,
         IPersistenceSink sink,
         TradeIngestMetrics metrics,
+        IQuoteVolume24hProvider quoteVolume24h,
         ILogger<MarketPipelineHostedService> log,
         IShotObserver? shotObserver = null)
     {
@@ -32,6 +34,7 @@ public sealed class MarketPipelineHostedService : BackgroundService
         _options = options;
         _sink = sink;
         _shotObserver = shotObserver;
+        _quoteVolume24h = quoteVolume24h;
         _metrics = metrics;
         _log = log;
     }
@@ -64,7 +67,7 @@ public sealed class MarketPipelineHostedService : BackgroundService
 
                 var pl = _pipelines.GetOrAdd(
                     trade.Symbol,
-                    sym => new SymbolPipeline(_source.ExchangeName, sym, _options.Value, _sink, _shotObserver));
+                    sym => new SymbolPipeline(_source.ExchangeName, sym, _options.Value, _sink, _shotObserver, _quoteVolume24h));
 
                 try
                 {

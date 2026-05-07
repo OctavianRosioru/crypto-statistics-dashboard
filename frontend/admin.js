@@ -16,6 +16,21 @@ function normalizeStatsLookbackDays(value) {
   return allowedStatsLookbackDays.has(days) ? days : 1;
 }
 
+const allowedQavLookbacks = new Set([0, 1, 5, 15, 30, 60, 180, 360, 720, 1440]);
+function normalizeQavLookback(value) {
+  const minutes = Number(value);
+  return allowedQavLookbacks.has(minutes) ? minutes : 0;
+}
+
+function optionalNumber(id) {
+  const raw = $(id).value.trim();
+  return raw === "" ? null : Number(raw);
+}
+
+function setOptionalNumber(id, value) {
+  $(id).value = value ?? "";
+}
+
 async function api(path, method = "GET", body = null) {
   const opts = { method, headers: { "Content-Type": "application/json" } };
   if (body !== null) opts.body = JSON.stringify(body);
@@ -64,12 +79,13 @@ function renderChannels(channels) {
       const t = ch.trigger;
       const range = t.distanceMax > 0 ? `${t.distanceMin}–${t.distanceMax}%` : `≥${t.distanceMin}%`;
       const syms = t.symbols && t.symbols.length ? t.symbols.join(", ") : "all";
-      meta = `<code>${t.exchange}</code> · <code>${t.side}</code> · entries ${range} · ≥${t.minTpCount} TP shots in ${t.windowSeconds}s · stats ${normalizeStatsLookbackDays(t.statsLookbackDays ?? 1)}d · TP≤${t.maxTpAgeMs}ms · cd ${t.cooldownSeconds}s · syms: ${syms}`;
+      const qav = qavMeta(t);
+      meta = `<code>${t.exchange}</code> · <code>${t.side}</code> · entries ${range} · ≥${t.minTpCount} TP shots in ${t.windowSeconds}s · stats ${normalizeStatsLookbackDays(t.statsLookbackDays ?? 1)}d${qav} · TP≤${t.maxTpAgeMs}ms · cd ${t.cooldownSeconds}s · syms: ${syms}`;
     } else if (ch.mode === "Statistic" && ch.statistic) {
       const s = ch.statistic;
       const range = `${(s.skip ?? 0) + 1}–${(s.skip ?? 0) + (s.topN ?? 20)}`;
       const syms = (s.symbols && s.symbols.length) ? `whitelist: ${s.symbols.length}` : "all symbols";
-      meta = `<code>${s.category}</code> · period ${s.periodHours}h · every ${frequencyLabel(s.frequencyHours)} · range ${range} · horizon ${s.horizonSec}s · ${syms}`;
+      meta = `<code>${s.category}</code> · period ${s.periodHours}h · every ${frequencyLabel(s.frequencyHours)} · range ${range} · horizon ${s.horizonSec}s${qavMeta(s)} · ${syms}`;
     }
     card.innerHTML = `
       <div class="head">
@@ -96,6 +112,24 @@ function renderChannels(channels) {
 
 function frequencyLabel(hours) {
   return Number(hours) === 0 ? "30s test" : `${hours ?? 1}h`;
+}
+
+function qavMeta(cfg) {
+  const lookback = normalizeQavLookback(cfg.qavChangeLookbackMinutes ?? 0);
+  if (lookback <= 0) return "";
+  const parts = [];
+  if (cfg.qavChangeMinPercent !== null && cfg.qavChangeMinPercent !== undefined) parts.push(`≥${cfg.qavChangeMinPercent}%`);
+  if (cfg.qavChangeMaxPercent !== null && cfg.qavChangeMaxPercent !== undefined) parts.push(`≤${cfg.qavChangeMaxPercent}%`);
+  return parts.length ? ` · QAV ${lookbackLabel(lookback)} ${parts.join("/")}` : "";
+}
+
+function lookbackLabel(minutes) {
+  if (minutes === 60) return "1h";
+  if (minutes === 180) return "3h";
+  if (minutes === 360) return "6h";
+  if (minutes === 720) return "12h";
+  if (minutes === 1440) return "24h";
+  return `${minutes}m`;
 }
 
 function escapeHtml(s) {
@@ -144,6 +178,9 @@ function resetTriggerForm() {
   $("t_posNet").checked = true;
   $("t_maxTpAge").value = "1500";
   $("t_statsDays").value = "1";
+  $("t_qavLookback").value = "0";
+  setOptionalNumber("t_qavMin", null);
+  setOptionalNumber("t_qavMax", null);
   $("t_cooldown").value = "30";
   $("t_msg").value = "#{exchange} #{symbol} {side} #{distance}";
 }
@@ -159,6 +196,9 @@ function fillTriggerForm(t) {
   $("t_posNet").checked = t.requirePositiveNet !== false;
   $("t_maxTpAge").value = t.maxTpAgeMs ?? 1500;
   $("t_statsDays").value = String(normalizeStatsLookbackDays(t.statsLookbackDays ?? 1));
+  $("t_qavLookback").value = String(normalizeQavLookback(t.qavChangeLookbackMinutes ?? 0));
+  setOptionalNumber("t_qavMin", t.qavChangeMinPercent);
+  setOptionalNumber("t_qavMax", t.qavChangeMaxPercent);
   $("t_cooldown").value = t.cooldownSeconds ?? 30;
   $("t_msg").value = t.messageFormat || "#{exchange} #{symbol} {side} #{distance}";
 }
@@ -173,6 +213,9 @@ function resetStatForm() {
   $("s_dmin").value = "0";
   $("s_dmax").value = "0";
   $("s_minQ").value = "0";
+  $("s_qavLookback").value = "0";
+  setOptionalNumber("s_qavMin", null);
+  setOptionalNumber("s_qavMax", null);
   $("s_horizon").value = "300";
   $("s_symbols").value = "";
   $("s_msg").value = "#{symbol} {exchange} {side}";
@@ -190,6 +233,9 @@ function fillStatForm(s) {
   $("s_dmin").value = s.distanceMin ?? 0;
   $("s_dmax").value = s.distanceMax ?? 0;
   $("s_minQ").value = s.minQuoteUsdt ?? 0;
+  $("s_qavLookback").value = String(normalizeQavLookback(s.qavChangeLookbackMinutes ?? 0));
+  setOptionalNumber("s_qavMin", s.qavChangeMinPercent);
+  setOptionalNumber("s_qavMax", s.qavChangeMaxPercent);
   $("s_horizon").value = String(s.horizonSec ?? 300);
   $("s_symbols").value = (s.symbols || []).join(", ");
   $("s_msg").value = s.messageFormat || "#{symbol} {exchange} {side}";
@@ -238,6 +284,9 @@ function readForm() {
       requirePositiveNet: $("t_posNet").checked,
       maxTpAgeMs: Number($("t_maxTpAge").value) || 1500,
       statsLookbackDays: normalizeStatsLookbackDays($("t_statsDays").value),
+      qavChangeLookbackMinutes: normalizeQavLookback($("t_qavLookback").value),
+      qavChangeMinPercent: optionalNumber("t_qavMin"),
+      qavChangeMaxPercent: optionalNumber("t_qavMax"),
       cooldownSeconds: Number($("t_cooldown").value) || 0,
       messageFormat: $("t_msg").value || "#{exchange} #{symbol} {side} #{distance}",
     };
@@ -252,6 +301,9 @@ function readForm() {
       distanceMin: Number($("s_dmin").value) || 0,
       distanceMax: Number($("s_dmax").value) || 0,
       minQuoteUsdt: Number($("s_minQ").value) || 0,
+      qavChangeLookbackMinutes: normalizeQavLookback($("s_qavLookback").value),
+      qavChangeMinPercent: optionalNumber("s_qavMin"),
+      qavChangeMaxPercent: optionalNumber("s_qavMax"),
       horizonSec: Number($("s_horizon").value) || 300,
       symbols: $("s_symbols").value.split(",").map(s => s.trim().toUpperCase()).filter(Boolean),
       messageFormat: $("s_msg").value || "#{symbol} {exchange} {side}",

@@ -12,6 +12,7 @@ public sealed class SymbolPipeline
     private readonly SlidingWindowTradeBuffer _buffer;
     private readonly IPersistenceSink _sink;
     private readonly IShotObserver? _shotObserver;
+    private readonly IQuoteVolume24hProvider? _quoteVolume24h;
     private readonly MillisecondBucketAggregator _msBuckets = new();
     private readonly HashSet<long> _triggeredMs = new();
     private readonly List<PendingCandle> _pending = new();
@@ -29,7 +30,8 @@ public sealed class SymbolPipeline
         string symbol,
         TradingOptions opt,
         IPersistenceSink sink,
-        IShotObserver? shotObserver = null)
+        IShotObserver? shotObserver = null,
+        IQuoteVolume24hProvider? quoteVolume24h = null)
     {
         _exchange = exchange;
         _symbol = symbol;
@@ -37,6 +39,7 @@ public sealed class SymbolPipeline
         _buffer = new SlidingWindowTradeBuffer(opt.MemoryWindowMinutes);
         _sink = sink;
         _shotObserver = shotObserver;
+        _quoteVolume24h = quoteVolume24h;
         _maxFollowMs = opt.FollowUpSeconds is { Length: > 0 }
             ? (long)opt.FollowUpSeconds.Max() * 1_000L
             : 300_000L;
@@ -188,6 +191,8 @@ public sealed class SymbolPipeline
         var density    = totalQuote / duration;
         var side       = CandleSideResolver.Resolve(first.Price, min, max);
         var diffPct    = CalculateDirectionalDiffPercent(side, min, max);
+        var qav        = _quoteVolume24h?.Snapshot(_exchange, _symbol, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+            ?? QuoteVolume24hSnapshot.Empty;
 
         p.SetWindowData(
             refMs:       last.TradeTimeMs,
@@ -197,7 +202,8 @@ public sealed class SymbolPipeline
             side:        side,
             firstPrice:  first.Price,
             totalQuote:  totalQuote,
-            density:     density);
+            density:     density,
+            quoteVolume: qav);
 
         return true;
     }
@@ -224,7 +230,10 @@ public sealed class SymbolPipeline
             DiffPercent:     p.WinDiffPct,
             Side:            p.WinSide,
             FirstTradePrice: p.WinFirstPrice,
-            TotalQuoteUsdt:  p.WinTotalQuote);
+            TotalQuoteUsdt:  p.WinTotalQuote)
+        {
+            QuoteVolume24h = p.QuoteVolume24h
+        };
 
         try { _shotObserver.OnShotDetected(shot); }
         catch { /* observer-ul e best-effort, nu poate să rupă pipeline-ul */ }
@@ -402,7 +411,10 @@ public sealed class SymbolPipeline
             p.WinFirstPrice,
             p.WinTotalQuote,
             p.WinDensity,
-            follow);
+            follow)
+        {
+            QuoteVolume24h = p.QuoteVolume24h
+        };
 
         var sims = SimulationEngine.Run(candle, _opt, after);
         await _sink.EnqueueAsync(new CandlePersistencePayload(candle, sims), cancellationToken).ConfigureAwait(false);
@@ -444,6 +456,7 @@ public sealed class SymbolPipeline
         public decimal  WinFirstPrice { get; private set; }
         public decimal  WinTotalQuote { get; private set; }
         public decimal  WinDensity  { get; private set; }
+        public QuoteVolume24hSnapshot QuoteVolume24h { get; private set; } = QuoteVolume24hSnapshot.Empty;
 
         // --- Telegram trigger fast-path ---
         public ShotEvent? Shot { get; set; }
@@ -453,7 +466,8 @@ public sealed class SymbolPipeline
 
         public void SetWindowData(long refMs, decimal min, decimal max, decimal diffPct,
                                   CandleSide side, decimal firstPrice,
-                                  decimal totalQuote, decimal density)
+                                  decimal totalQuote, decimal density,
+                                  QuoteVolume24hSnapshot quoteVolume)
         {
             RefMs          = refMs;
             WinMin         = min;
@@ -463,6 +477,7 @@ public sealed class SymbolPipeline
             WinFirstPrice  = firstPrice;
             WinTotalQuote  = totalQuote;
             WinDensity     = density;
+            QuoteVolume24h = quoteVolume;
             WindowDataComputedUtc = DateTime.UtcNow;
             WindowDataComputed = true;
         }

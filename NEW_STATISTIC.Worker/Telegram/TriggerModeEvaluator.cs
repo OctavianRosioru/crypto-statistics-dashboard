@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using NEW_STATISTIC.Core.Domain;
 using NEW_STATISTIC.Core.Options;
+using NEW_STATISTIC.Core.Services;
 using NEW_STATISTIC.Infrastructure.Data;
 
 namespace NEW_STATISTIC.Worker.Telegram;
@@ -105,6 +106,8 @@ public sealed class TriggerModeEvaluator : IHostedService
                 .FirstOrDefault();
             if (latestShotResult is null || latestShotResult.Outcome != OutcomeKind.TakeProfit)
                 continue;
+            if (!QavFilterPasses(latestShotResult.Shot.QuoteVolume24h, t.QavChangeLookbackMinutes, t.QavChangeMinPercent, t.QavChangeMaxPercent))
+                continue;
 
             // Folosim PnlPercent precalculat pe outcome-ul reprezentativ:
             //    TP = +diff × tpRatio (limit order, execuție exactă la țintă);
@@ -192,6 +195,8 @@ public sealed class TriggerModeEvaluator : IHostedService
                 c.Symbol == latest.Shot.Symbol &&
                 c.Side == side &&
                 c.TriggerTimeMs >= sinceMs &&
+                // Only a lower bound on the physical shot. A 14% shot can still
+                // contain a valid 2-2.5% entry simulation for this trigger.
                 c.DiffPercent >= min)
             .ToListAsync(ct)
             .ConfigureAwait(false);
@@ -199,6 +204,9 @@ public sealed class TriggerModeEvaluator : IHostedService
         var outcomes = new List<StatsOutcome>();
         foreach (var candle in candles)
         {
+            if (!QavFilterPasses(SnapshotFromCandle(candle), t.QavChangeLookbackMinutes, t.QavChangeMinPercent, t.QavChangeMaxPercent))
+                continue;
+
             var candleOutcomes = candle.Simulations
                 .Where(s => s.OpenOffsetPercent >= min - 0.000001m)
                 .Where(s => max <= 0m || s.OpenOffsetPercent <= max + 0.000001m)
@@ -210,7 +218,7 @@ public sealed class TriggerModeEvaluator : IHostedService
             if (candleOutcomes.Count == 0)
                 continue;
 
-            outcomes.Add(AggregateRangeStats(candleOutcomes));
+            outcomes.AddRange(candleOutcomes);
         }
 
         return BuildStats(outcomes);
@@ -349,6 +357,36 @@ public sealed class TriggerModeEvaluator : IHostedService
         return HasReliableTpLead(stats.Tp, stats.Sl);
     }
 
+    private static bool QavFilterPasses(
+        QuoteVolume24hSnapshot snapshot,
+        int lookbackMinutes,
+        decimal? minPercent,
+        decimal? maxPercent)
+    {
+        var lookback = QuoteVolume24hStore.NormalizeLookbackMinutes(lookbackMinutes);
+        if (lookback <= 0 || (minPercent is null && maxPercent is null))
+            return true;
+
+        var change = snapshot.ChangeForMinutes(lookback);
+        if (change is null) return false;
+        if (minPercent is not null && change.Value < minPercent.Value) return false;
+        if (maxPercent is not null && change.Value > maxPercent.Value) return false;
+        return true;
+    }
+
+    private static QuoteVolume24hSnapshot SnapshotFromCandle(CandleEntity candle) => new(
+        candle.QuoteVolume24hUsdt,
+        candle.QuoteVolume24hUpdatedMs,
+        candle.QuoteVolume24hChange1mPct,
+        candle.QuoteVolume24hChange5mPct,
+        candle.QuoteVolume24hChange15mPct,
+        candle.QuoteVolume24hChange30mPct,
+        candle.QuoteVolume24hChange1hPct,
+        candle.QuoteVolume24hChange3hPct,
+        candle.QuoteVolume24hChange6hPct,
+        candle.QuoteVolume24hChange12hPct,
+        candle.QuoteVolume24hChange24hPct);
+
     private static bool HasReliableTpLead(int tpCount, int slCount)
     {
         if (tpCount <= 0) return false;
@@ -413,7 +451,34 @@ public sealed class TriggerModeEvaluator : IHostedService
             .Replace("{none}",     noneCount.ToString())
             .Replace("{shots}",    (tpCount + slCount + noneCount).ToString())
             .Replace("{net}",      sign + net.ToString("F2"))
+            .Replace("{qav}",      FormatQav(ev.Shot.QuoteVolume24h.QuoteVolume24hUsdt))
+            .Replace("{qav_chg_1m}",  FormatQavChange(ev.Shot.QuoteVolume24h.Change1mPct))
+            .Replace("{qav_chg_5m}",  FormatQavChange(ev.Shot.QuoteVolume24h.Change5mPct))
+            .Replace("{qav_chg_15m}", FormatQavChange(ev.Shot.QuoteVolume24h.Change15mPct))
+            .Replace("{qav_chg_30m}", FormatQavChange(ev.Shot.QuoteVolume24h.Change30mPct))
+            .Replace("{qav_chg_1h}",  FormatQavChange(ev.Shot.QuoteVolume24h.Change1hPct))
+            .Replace("{qav_chg_3h}",  FormatQavChange(ev.Shot.QuoteVolume24h.Change3hPct))
+            .Replace("{qav_chg_6h}",  FormatQavChange(ev.Shot.QuoteVolume24h.Change6hPct))
+            .Replace("{qav_chg_12h}", FormatQavChange(ev.Shot.QuoteVolume24h.Change12hPct))
+            .Replace("{qav_chg_24h}", FormatQavChange(ev.Shot.QuoteVolume24h.Change24hPct))
             .Replace("{age}",      (ev.OutcomeAgeMs ?? 0).ToString());
+    }
+
+    private static string FormatQav(decimal? value)
+    {
+        if (value is null) return "n/a";
+        var v = value.Value;
+        if (v >= 1_000_000_000m) return (v / 1_000_000_000m).ToString("0.##") + "B";
+        if (v >= 1_000_000m) return (v / 1_000_000m).ToString("0.##") + "M";
+        if (v >= 1_000m) return (v / 1_000m).ToString("0.##") + "k";
+        return v.ToString("0.##");
+    }
+
+    private static string FormatQavChange(decimal? value)
+    {
+        if (value is null) return "n/a";
+        var sign = value.Value >= 0m ? "+" : "";
+        return sign + value.Value.ToString("0.##") + "%";
     }
 
     private async Task SendAsync(TelegramChannel ch, string text)

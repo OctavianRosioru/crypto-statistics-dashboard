@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using NEW_STATISTIC.Core.Abstractions;
 using NEW_STATISTIC.Core.Domain;
 using NEW_STATISTIC.Core.Options;
+using NEW_STATISTIC.Core.Services;
 
 namespace NEW_STATISTIC.Infrastructure.Exchange;
 
@@ -17,19 +18,23 @@ public sealed class BinanceUsdFuturesAggregateTradeSource : IExchangeAggregateTr
     private readonly IBinanceRestClient _rest;
     private readonly IBinanceSocketClient _socket;
     private readonly TradingOptions _opt;
+    private readonly QuoteVolume24hStore _quoteVolumes;
     private readonly ILogger<BinanceUsdFuturesAggregateTradeSource> _log;
     private long _sessionTradeCount;
     private int _firstTradeLogged;
+    private int _firstTickerLogged;
 
     public BinanceUsdFuturesAggregateTradeSource(
         IBinanceRestClient rest,
         IBinanceSocketClient socket,
         IOptions<TradingOptions> opt,
+        QuoteVolume24hStore quoteVolumes,
         ILogger<BinanceUsdFuturesAggregateTradeSource> log)
     {
         _rest = rest;
         _socket = socket;
         _opt = opt.Value;
+        _quoteVolumes = quoteVolumes;
         _log = log;
     }
 
@@ -72,6 +77,7 @@ public sealed class BinanceUsdFuturesAggregateTradeSource : IExchangeAggregateTr
     {
         Interlocked.Exchange(ref _sessionTradeCount, 0);
         Interlocked.Exchange(ref _firstTradeLogged, 0);
+        Interlocked.Exchange(ref _firstTickerLogged, 0);
 
         var info = await _rest.UsdFuturesApi.ExchangeData.GetExchangeInfoAsync(cancellationToken).ConfigureAwait(false);
         if (!info.Success || info.Data?.Symbols is null)
@@ -149,12 +155,50 @@ public sealed class BinanceUsdFuturesAggregateTradeSource : IExchangeAggregateTr
                     $"Binance socket subscribe failed (batch {batchNo}/{batches}, {batchSymbols.Length} symbols): {sub.Error?.Message}");
             }
 
+            var tickerSub = await _socket.UsdFuturesApi.ExchangeData
+                .SubscribeToTickerUpdatesAsync(batchSymbols, ev =>
+                {
+                    try
+                    {
+                        var d = ev.Data;
+                        if (!TickerReflection.TryReadString(d, "Symbol", out var symbol) &&
+                            !TickerReflection.TryReadString(ev, "Symbol", out symbol))
+                        {
+                            return;
+                        }
+
+                        if (!TickerReflection.TryReadDecimal(d, "QuoteVolume", out var quoteVolume))
+                            return;
+
+                        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                        _quoteVolumes.Record(ExchangeName, symbol, nowMs, quoteVolume);
+
+                        if (Interlocked.CompareExchange(ref _firstTickerLogged, 1, 0) == 0)
+                        {
+                            _log.LogInformation(
+                                "Binance ticker WebSocket: receiving 24h QAV. First: {Symbol} quoteVolume24h={QuoteVolume}",
+                                symbol, quoteVolume);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.LogError(ex, "Binance ticker callback failed");
+                    }
+                }, cancellationToken).ConfigureAwait(false);
+
+            if (!tickerSub.Success)
+            {
+                throw new InvalidOperationException(
+                    $"Binance ticker socket subscribe failed (batch {batchNo}/{batches}, {batchSymbols.Length} symbols): {tickerSub.Error?.Message}");
+            }
+
             _log.LogInformation(
-                "Binance WebSocket: batch {BatchNo}/{Batches} subscribed ({InBatch} symbols), subscription id {SubscriptionId}.",
+                "Binance WebSocket: batch {BatchNo}/{Batches} subscribed ({InBatch} symbols), trade subscription id {TradeSubscriptionId}, ticker subscription id {TickerSubscriptionId}.",
                 batchNo,
                 batches,
                 batchSymbols.Length,
-                sub.Data?.Id ?? 0);
+                sub.Data?.Id ?? 0,
+                tickerSub.Data?.Id ?? 0);
         }
 
         _log.LogInformation(

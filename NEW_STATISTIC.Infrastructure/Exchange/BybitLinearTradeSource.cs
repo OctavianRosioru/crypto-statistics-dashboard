@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using NEW_STATISTIC.Core.Abstractions;
 using NEW_STATISTIC.Core.Domain;
 using NEW_STATISTIC.Core.Options;
+using NEW_STATISTIC.Core.Services;
 
 namespace NEW_STATISTIC.Infrastructure.Exchange;
 
@@ -18,19 +19,23 @@ public sealed class BybitLinearTradeSource : IExchangeAggregateTradeSource
     private readonly IBybitRestClient _rest;
     private readonly IBybitSocketClient _socket;
     private readonly TradingOptions _opt;
+    private readonly QuoteVolume24hStore _quoteVolumes;
     private readonly ILogger<BybitLinearTradeSource> _log;
     private long _sessionTradeCount;
     private int _firstTradeLogged;
+    private int _firstTickerLogged;
 
     public BybitLinearTradeSource(
         IBybitRestClient rest,
         IBybitSocketClient socket,
         IOptions<TradingOptions> opt,
+        QuoteVolume24hStore quoteVolumes,
         ILogger<BybitLinearTradeSource> log)
     {
         _rest = rest;
         _socket = socket;
         _opt = opt.Value;
+        _quoteVolumes = quoteVolumes;
         _log = log;
     }
 
@@ -73,6 +78,7 @@ public sealed class BybitLinearTradeSource : IExchangeAggregateTradeSource
     {
         Interlocked.Exchange(ref _sessionTradeCount, 0);
         Interlocked.Exchange(ref _firstTradeLogged, 0);
+        Interlocked.Exchange(ref _firstTickerLogged, 0);
 
         var symbols = await GetTradingUsdtSymbolsAsync(cancellationToken).ConfigureAwait(false);
 
@@ -118,10 +124,43 @@ public sealed class BybitLinearTradeSource : IExchangeAggregateTradeSource
             throw new InvalidOperationException($"Bybit socket subscribe failed: {sub.Error?.Message}");
         }
 
+        var tickerSub = await _socket.V5LinearApi.SubscribeToTickerUpdatesAsync(symbols, ev =>
+        {
+            try
+            {
+                var d = ev.Data;
+                if (!TickerReflection.TryReadString(d, "Symbol", out var symbol) ||
+                    !TickerReflection.TryReadDecimal(d, "Turnover24h", out var turnover24h))
+                {
+                    return;
+                }
+
+                var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                _quoteVolumes.Record(ExchangeName, symbol, nowMs, turnover24h);
+
+                if (Interlocked.CompareExchange(ref _firstTickerLogged, 1, 0) == 0)
+                {
+                    _log.LogInformation(
+                        "Bybit ticker WebSocket: receiving 24h QAV. First: {Symbol} turnover24h={Turnover24h}",
+                        symbol, turnover24h);
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.LogError(ex, "Bybit ticker callback failed");
+            }
+        }, cancellationToken).ConfigureAwait(false);
+
+        if (!tickerSub.Success)
+        {
+            throw new InvalidOperationException($"Bybit ticker socket subscribe failed: {tickerSub.Error?.Message}");
+        }
+
         _log.LogInformation(
-            "Bybit WebSocket connected and subscribed successfully ({SymbolCount} symbols). Subscription id: {SubscriptionId}",
+            "Bybit WebSocket connected and subscribed successfully ({SymbolCount} symbols). Trade subscription id: {TradeSubscriptionId}; ticker subscription id: {TickerSubscriptionId}",
             symbols.Length,
-            sub.Data?.Id ?? 0);
+            sub.Data?.Id ?? 0,
+            tickerSub.Data?.Id ?? 0);
 
         try
         {

@@ -67,6 +67,17 @@ public sealed class EfCandlePersistence
             FirstTradePrice = c.FirstTradePrice,
             TotalQuoteUsdt = c.TotalQuoteUsdt,
             DensityUsdtPerMs = c.DensityUsdtPerMs,
+            QuoteVolume24hUsdt = c.QuoteVolume24h.QuoteVolume24hUsdt,
+            QuoteVolume24hUpdatedMs = c.QuoteVolume24h.QuoteVolume24hUpdatedMs,
+            QuoteVolume24hChange1mPct = c.QuoteVolume24h.Change1mPct,
+            QuoteVolume24hChange5mPct = c.QuoteVolume24h.Change5mPct,
+            QuoteVolume24hChange15mPct = c.QuoteVolume24h.Change15mPct,
+            QuoteVolume24hChange30mPct = c.QuoteVolume24h.Change30mPct,
+            QuoteVolume24hChange1hPct = c.QuoteVolume24h.Change1hPct,
+            QuoteVolume24hChange3hPct = c.QuoteVolume24h.Change3hPct,
+            QuoteVolume24hChange6hPct = c.QuoteVolume24h.Change6hPct,
+            QuoteVolume24hChange12hPct = c.QuoteVolume24h.Change12hPct,
+            QuoteVolume24hChange24hPct = c.QuoteVolume24h.Change24hPct,
             FollowUpJson = JsonSerializer.Serialize(c.FollowUp, Json),
             CreatedAt = DateTimeOffset.UtcNow
         };

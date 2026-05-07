@@ -14,4 +14,7 @@ public sealed record CompletedCandle(
     decimal FirstTradePrice,
     decimal TotalQuoteUsdt,
     decimal DensityUsdtPerMs,
-    FollowUpSnapshot FollowUp);
+    FollowUpSnapshot FollowUp)
+{
+    public QuoteVolume24hSnapshot QuoteVolume24h { get; init; } = QuoteVolume24hSnapshot.Empty;
+}

@@ -53,6 +53,39 @@ namespace NEW_STATISTIC.Infrastructure.Data.Migrations
                     b.Property<decimal>("MinPrice")
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal?>("QuoteVolume24hChange12hPct")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("QuoteVolume24hChange15mPct")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("QuoteVolume24hChange1hPct")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("QuoteVolume24hChange1mPct")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("QuoteVolume24hChange24hPct")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("QuoteVolume24hChange30mPct")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("QuoteVolume24hChange3hPct")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("QuoteVolume24hChange5mPct")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("QuoteVolume24hChange6hPct")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("QuoteVolume24hUpdatedMs")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("QuoteVolume24hUsdt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Side")
                         .IsRequired()
                         .HasMaxLength(8)

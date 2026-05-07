@@ -30,6 +30,28 @@ public sealed class CandleEntity
 
     public decimal DensityUsdtPerMs { get; set; }
 
+    public decimal? QuoteVolume24hUsdt { get; set; }
+
+    public long? QuoteVolume24hUpdatedMs { get; set; }
+
+    public decimal? QuoteVolume24hChange1mPct { get; set; }
+
+    public decimal? QuoteVolume24hChange5mPct { get; set; }
+
+    public decimal? QuoteVolume24hChange15mPct { get; set; }
+
+    public decimal? QuoteVolume24hChange30mPct { get; set; }
+
+    public decimal? QuoteVolume24hChange1hPct { get; set; }
+
+    public decimal? QuoteVolume24hChange3hPct { get; set; }
+
+    public decimal? QuoteVolume24hChange6hPct { get; set; }
+
+    public decimal? QuoteVolume24hChange12hPct { get; set; }
+
+    public decimal? QuoteVolume24hChange24hPct { get; set; }
+
     /// <summary>JSON: FollowUpSnapshot.</summary>
     public string FollowUpJson { get; set; } = "";
 

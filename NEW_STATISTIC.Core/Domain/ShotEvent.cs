@@ -16,7 +16,10 @@ public sealed record ShotEvent(
     decimal DiffPercent,
     CandleSide Side,
     decimal FirstTradePrice,
-    decimal TotalQuoteUsdt);
+    decimal TotalQuoteUsdt)
+{
+    public QuoteVolume24hSnapshot QuoteVolume24h { get; init; } = QuoteVolume24hSnapshot.Empty;
+}
 
 /// <summary>
 /// Rezultatul evaluării rapide TP/SL a unui shot pe orizontul scurt configurat de canalul trigger.

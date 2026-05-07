@@ -76,6 +76,15 @@ public sealed class TelegramTriggerConfig
     /// <summary>Perioada din DB folosită pentru verificarea statisticii înainte de trigger (1, 3, 7, 14 sau 30 zile).</summary>
     public int StatsLookbackDays { get; set; } = 1;
 
+    /// <summary>0 = dezactivat; valori acceptate: 1, 5, 15, 30, 60, 180, 360, 720, 1440 minute.</summary>
+    public int QavChangeLookbackMinutes { get; set; } = 0;
+
+    /// <summary>Prag minim pentru creșterea QAV 24h vs lookback-ul ales.</summary>
+    public decimal? QavChangeMinPercent { get; set; }
+
+    /// <summary>Prag maxim pentru scăderea QAV 24h vs lookback-ul ales.</summary>
+    public decimal? QavChangeMaxPercent { get; set; }
+
     /// <summary>Anti-spam per (canal, simbol).</summary>
     public int CooldownSeconds { get; set; } = 30;
 
@@ -119,6 +128,15 @@ public sealed class TelegramStatisticConfig
     public decimal DistanceMax { get; set; } = 0m;
     public decimal MinQuoteUsdt { get; set; } = 0m;
     public int HorizonSec { get; set; } = 300;
+
+    /// <summary>0 = dezactivat; valori acceptate: 1, 5, 15, 30, 60, 180, 360, 720, 1440 minute.</summary>
+    public int QavChangeLookbackMinutes { get; set; } = 0;
+
+    /// <summary>Prag minim pentru creșterea QAV 24h vs lookback-ul ales.</summary>
+    public decimal? QavChangeMinPercent { get; set; }
+
+    /// <summary>Prag maxim pentru scăderea QAV 24h vs lookback-ul ales.</summary>
+    public decimal? QavChangeMaxPercent { get; set; }
 
     /// <summary>
     /// Whitelist de simboluri (deja normalizate UPPERCASE). Goală = toate.

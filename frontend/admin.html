@@ -95,6 +95,23 @@
               </select>
             </div>
             <div class="filter-row">
+              <label class="filter-label">QAV filter</label>
+              <select id="t_qavLookback" class="filter-select">
+                <option value="0">Off</option>
+                <option value="1">vs 1m</option>
+                <option value="5">vs 5m</option>
+                <option value="15">vs 15m</option>
+                <option value="30">vs 30m</option>
+                <option value="60">vs 1h</option>
+                <option value="180">vs 3h</option>
+                <option value="360">vs 6h</option>
+                <option value="720">vs 12h</option>
+                <option value="1440">vs 24h</option>
+              </select>
+              <input id="t_qavMin" type="number" step="0.1" class="filter-input narrow" placeholder="min %" />
+              <input id="t_qavMax" type="number" step="0.1" class="filter-input narrow" placeholder="max %" />
+            </div>
+            <div class="filter-row">
               <label class="filter-label">Cooldown</label>
               <input id="t_cooldown" type="number" min="0" value="30" class="filter-input narrow" /><span class="unit">sec</span>
             </div>
@@ -103,7 +120,7 @@
               <input id="t_msg" class="filter-input wide" value="#{exchange} #{symbol} {side} #{distance}" />
             </div>
             <div class="filter-row hint">
-              <span>Tokeni: <code>{exchange}</code> <code>{symbol}</code> <code>{side}</code> <code>{distance}</code> <code>{tp}</code> <code>{sl}</code> <code>{none}</code> <code>{shots}</code> <code>{net}</code> <code>{age}</code></span>
+              <span>Tokeni: <code>{exchange}</code> <code>{symbol}</code> <code>{side}</code> <code>{distance}</code> <code>{tp}</code> <code>{sl}</code> <code>{none}</code> <code>{shots}</code> <code>{net}</code> <code>{age}</code> <code>{qav}</code> <code>{qav_chg_1h}</code></span>
             </div>
           </fieldset>
 
@@ -168,6 +185,23 @@
               <input id="s_minQ" type="number" min="0" value="0" class="filter-input narrow" /><span class="unit">USDT</span>
             </div>
             <div class="filter-row">
+              <label class="filter-label">QAV filter</label>
+              <select id="s_qavLookback" class="filter-select">
+                <option value="0">Off</option>
+                <option value="1">vs 1m</option>
+                <option value="5">vs 5m</option>
+                <option value="15">vs 15m</option>
+                <option value="30">vs 30m</option>
+                <option value="60">vs 1h</option>
+                <option value="180">vs 3h</option>
+                <option value="360">vs 6h</option>
+                <option value="720">vs 12h</option>
+                <option value="1440">vs 24h</option>
+              </select>
+              <input id="s_qavMin" type="number" step="0.1" class="filter-input narrow" placeholder="min %" />
+              <input id="s_qavMax" type="number" step="0.1" class="filter-input narrow" placeholder="max %" />
+            </div>
+            <div class="filter-row">
               <label class="filter-label">Horizon</label>
               <select id="s_horizon" class="filter-select">
                 <option value="1">1s</option>
@@ -184,7 +218,7 @@
               <input id="s_delay" type="number" min="0" step="100" value="1000" class="filter-input narrow" /><span class="unit">ms pauză între</span>
             </div>
             <div class="filter-row hint">
-              <span>Un mesaj per simbol. Tokeni: <code>{symbol}</code> <code>{exchange}</code> <code>{side}</code> <code>{tp}</code> <code>{sl}</code> <code>{shots}</code> <code>{net}</code></span>
+              <span>Un mesaj per simbol. Tokeni: <code>{symbol}</code> <code>{exchange}</code> <code>{side}</code> <code>{tp}</code> <code>{sl}</code> <code>{shots}</code> <code>{net}</code> <code>{qav}</code> <code>{qav_chg_1h}</code></span>
             </div>
           </fieldset>
 

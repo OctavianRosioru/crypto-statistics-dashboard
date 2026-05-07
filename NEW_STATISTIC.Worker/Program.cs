@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NEW_STATISTIC.Core.Abstractions;
 using NEW_STATISTIC.Core.Options;
+using NEW_STATISTIC.Core.Services;
 using NEW_STATISTIC.Infrastructure.Data;
 using NEW_STATISTIC.Infrastructure.Exchange;
 using NEW_STATISTIC.Infrastructure.Logging;
@@ -45,6 +46,8 @@ builder.Services.AddSingleton<ChannelPersistenceSink>();
 builder.Services.AddSingleton<IPersistenceSink>(sp => sp.GetRequiredService<ChannelPersistenceSink>());
 builder.Services.AddSingleton<EfCandlePersistence>();
 builder.Services.AddSingleton<TradeIngestMetrics>();
+builder.Services.AddSingleton<QuoteVolume24hStore>();
+builder.Services.AddSingleton<IQuoteVolume24hProvider>(sp => sp.GetRequiredService<QuoteVolume24hStore>());
 
 // ── Telegram (admin-driven) ──────────────────────────────────────────
 builder.Services.AddSingleton<TelegramClient>();

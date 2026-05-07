@@ -63,4 +63,58 @@ public class CoreLogicTests
         Assert.NotEmpty(rows);
         Assert.All(rows, r => Assert.True(r.OpenPrice <= candle.MaxPrice));
     }
+
+    [Fact]
+    public void QuoteVolume24hStore_calculates_positive_change()
+    {
+        var store = new QuoteVolume24hStore();
+        store.Record("Binance", "BTCUSDT", 0, 100m);
+        store.Record("Binance", "BTCUSDT", QuoteVolume24hStore.MinuteMs, 150m);
+
+        var snapshot = store.Snapshot("binance", "btcusdt", QuoteVolume24hStore.MinuteMs);
+
+        Assert.Equal(150m, snapshot.QuoteVolume24hUsdt);
+        Assert.Equal(50m, snapshot.Change1mPct);
+    }
+
+    [Fact]
+    public void QuoteVolume24hStore_calculates_negative_and_zero_change()
+    {
+        var store = new QuoteVolume24hStore();
+        store.Record("Bybit", "ETHUSDT", 0, 200m);
+        store.Record("Bybit", "ETHUSDT", 5 * QuoteVolume24hStore.MinuteMs, 150m);
+        var negative = store.Snapshot("BYBIT", "ETHUSDT", 5 * QuoteVolume24hStore.MinuteMs);
+
+        store.Record("Bybit", "ETHUSDT", 6 * QuoteVolume24hStore.MinuteMs, 150m);
+
+        var snapshot = store.Snapshot("BYBIT", "ETHUSDT", 6 * QuoteVolume24hStore.MinuteMs);
+
+        Assert.Equal(-25m, negative.Change5mPct);
+        Assert.Equal(0m, snapshot.Change1mPct);
+    }
+
+    [Fact]
+    public void QuoteVolume24hStore_returns_unavailable_for_missing_history_or_stale_ticker()
+    {
+        var store = new QuoteVolume24hStore();
+        store.Record("Binance", "SOLUSDT", 5 * QuoteVolume24hStore.MinuteMs, 100m);
+
+        var fresh = store.Snapshot("Binance", "SOLUSDT", 5 * QuoteVolume24hStore.MinuteMs);
+        var stale = store.Snapshot("Binance", "SOLUSDT", 5 * QuoteVolume24hStore.MinuteMs + QuoteVolume24hStore.DefaultMaxStaleMs + 1);
+
+        Assert.Null(fresh.Change1mPct);
+        Assert.Null(stale.QuoteVolume24hUsdt);
+    }
+
+    [Fact]
+    public void QuoteVolume24hStore_keeps_24h_ring_value()
+    {
+        var store = new QuoteVolume24hStore();
+        store.Record("Binance", "XRPUSDT", 0, 100m);
+        store.Record("Binance", "XRPUSDT", 1440 * QuoteVolume24hStore.MinuteMs, 150m);
+
+        var snapshot = store.Snapshot("Binance", "XRPUSDT", 1440 * QuoteVolume24hStore.MinuteMs);
+
+        Assert.Equal(50m, snapshot.Change24hPct);
+    }
 }

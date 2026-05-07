@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using NEW_STATISTIC.Core.Domain;
 using NEW_STATISTIC.Core.Options;
+using NEW_STATISTIC.Core.Services;
 using NEW_STATISTIC.Infrastructure.Data;
 
 namespace NEW_STATISTIC.Worker.Telegram;
@@ -20,7 +22,8 @@ public static class ReportAggregator
         int Tp,
         int Sl,
         double GainPct,
-        double LossPct)
+        double LossPct,
+        QuoteVolume24hSnapshot QuoteVolume24h)
     {
         public double Net => GainPct - LossPct;
     }
@@ -69,6 +72,9 @@ public static class ReportAggregator
 
         foreach (var candle in candles)
         {
+            if (!QavFilterPasses(SnapshotFromCandle(candle), cfg.QavChangeLookbackMinutes, cfg.QavChangeMinPercent, cfg.QavChangeMaxPercent))
+                continue;
+
             var stat = ProcessCandle(candle, horizonKey, targetOffset);
             if (stat is null) continue;
 
@@ -80,6 +86,11 @@ public static class ReportAggregator
             // dacă nu am setat Exchange (entry vechi fără valoare), îl actualizăm
             if (string.IsNullOrEmpty(a.Exchange) && !string.IsNullOrEmpty(candle.Exchange))
                 a.Exchange = candle.Exchange;
+            if (candle.TriggerTimeMs >= a.LatestTriggerTimeMs)
+            {
+                a.LatestTriggerTimeMs = candle.TriggerTimeMs;
+                a.QuoteVolume24h = SnapshotFromCandle(candle);
+            }
 
             a.Shots++;
             if (string.Equals(candle.Side, "Buy", StringComparison.Ordinal))      a.BuyCount++;
@@ -98,7 +109,8 @@ public static class ReportAggregator
                 Tp:           kv.Value.Tp,
                 Sl:           kv.Value.Sl,
                 GainPct:      kv.Value.Gain,
-                LossPct:      kv.Value.Loss))
+                LossPct:      kv.Value.Loss,
+                QuoteVolume24h: kv.Value.QuoteVolume24h))
             .ToList();
     }
 
@@ -125,7 +137,39 @@ public static class ReportAggregator
         public int Shots, Tp, Sl;
         public int BuyCount, SellCount;
         public double Gain, Loss;
+        public long LatestTriggerTimeMs;
+        public QuoteVolume24hSnapshot QuoteVolume24h = QuoteVolume24hSnapshot.Empty;
     }
+
+    private static bool QavFilterPasses(
+        QuoteVolume24hSnapshot snapshot,
+        int lookbackMinutes,
+        decimal? minPercent,
+        decimal? maxPercent)
+    {
+        var lookback = QuoteVolume24hStore.NormalizeLookbackMinutes(lookbackMinutes);
+        if (lookback <= 0 || (minPercent is null && maxPercent is null))
+            return true;
+
+        var change = snapshot.ChangeForMinutes(lookback);
+        if (change is null) return false;
+        if (minPercent is not null && change.Value < minPercent.Value) return false;
+        if (maxPercent is not null && change.Value > maxPercent.Value) return false;
+        return true;
+    }
+
+    private static QuoteVolume24hSnapshot SnapshotFromCandle(CandleEntity candle) => new(
+        candle.QuoteVolume24hUsdt,
+        candle.QuoteVolume24hUpdatedMs,
+        candle.QuoteVolume24hChange1mPct,
+        candle.QuoteVolume24hChange5mPct,
+        candle.QuoteVolume24hChange15mPct,
+        candle.QuoteVolume24hChange30mPct,
+        candle.QuoteVolume24hChange1hPct,
+        candle.QuoteVolume24hChange3hPct,
+        candle.QuoteVolume24hChange6hPct,
+        candle.QuoteVolume24hChange12hPct,
+        candle.QuoteVolume24hChange24hPct);
 
     private static (int Kind, double GainPct, double LossPct)? ProcessCandle(
         CandleEntity candle, string horizonKey, decimal targetOffset)

@@ -70,6 +70,37 @@ static IQueryable<CandleEntity> ApplySymbolFilter(IQueryable<CandleEntity> q, st
     blacklist ? q.Where(c => !symList.Contains(c.Symbol))
               : q.Where(c => symList.Contains(c.Symbol));
 
+static int NormalizeQavLookbackMinutes(int? minutes) => minutes is 1 or 5 or 15 or 30 or 60 or 180 or 360 or 720 or 1440
+    ? minutes.Value
+    : 0;
+
+static decimal? QavChangeFor(CandleEntity c, int minutes) => minutes switch
+{
+    1 => c.QuoteVolume24hChange1mPct,
+    5 => c.QuoteVolume24hChange5mPct,
+    15 => c.QuoteVolume24hChange15mPct,
+    30 => c.QuoteVolume24hChange30mPct,
+    60 => c.QuoteVolume24hChange1hPct,
+    180 => c.QuoteVolume24hChange3hPct,
+    360 => c.QuoteVolume24hChange6hPct,
+    720 => c.QuoteVolume24hChange12hPct,
+    1440 => c.QuoteVolume24hChange24hPct,
+    _ => null
+};
+
+static bool QavFilterPasses(CandleEntity c, int? lookbackMinutes, decimal? minPercent, decimal? maxPercent)
+{
+    var lookback = NormalizeQavLookbackMinutes(lookbackMinutes);
+    if (lookback <= 0 || (minPercent is null && maxPercent is null))
+        return true;
+
+    var change = QavChangeFor(c, lookback);
+    if (change is null) return false;
+    if (minPercent is not null && change.Value < minPercent.Value) return false;
+    if (maxPercent is not null && change.Value > maxPercent.Value) return false;
+    return true;
+}
+
 // --- Helper: simularea cu openOffsetPercent cel mai apropiat de target (binary search) ---
 static SimulationEntity? FindClosestSim(List<SimulationEntity> sorted, decimal target)
 {
@@ -120,6 +151,17 @@ app.MapGet("/api/candles", async (
             c.Side,
             c.TotalQuoteUsdt,
             c.DensityUsdtPerMs,
+            c.QuoteVolume24hUsdt,
+            c.QuoteVolume24hUpdatedMs,
+            c.QuoteVolume24hChange1mPct,
+            c.QuoteVolume24hChange5mPct,
+            c.QuoteVolume24hChange15mPct,
+            c.QuoteVolume24hChange30mPct,
+            c.QuoteVolume24hChange1hPct,
+            c.QuoteVolume24hChange3hPct,
+            c.QuoteVolume24hChange6hPct,
+            c.QuoteVolume24hChange12hPct,
+            c.QuoteVolume24hChange24hPct,
             c.CreatedAt
         })
         .ToListAsync(ct)
@@ -169,6 +211,17 @@ app.MapGet("/api/candles/with-simulations", async (
         c.MaxPrice,
         c.TotalQuoteUsdt,
         c.DensityUsdtPerMs,
+        c.QuoteVolume24hUsdt,
+        c.QuoteVolume24hUpdatedMs,
+        c.QuoteVolume24hChange1mPct,
+        c.QuoteVolume24hChange5mPct,
+        c.QuoteVolume24hChange15mPct,
+        c.QuoteVolume24hChange30mPct,
+        c.QuoteVolume24hChange1hPct,
+        c.QuoteVolume24hChange3hPct,
+        c.QuoteVolume24hChange6hPct,
+        c.QuoteVolume24hChange12hPct,
+        c.QuoteVolume24hChange24hPct,
         c.CreatedAt,
         Simulations = c.Simulations
             .OrderBy(s => s.OpenOffsetPercent)
@@ -213,6 +266,17 @@ app.MapGet("/api/candles/{id:long}", async (
             x.FirstTradePrice,
             x.TotalQuoteUsdt,
             x.DensityUsdtPerMs,
+            x.QuoteVolume24hUsdt,
+            x.QuoteVolume24hUpdatedMs,
+            x.QuoteVolume24hChange1mPct,
+            x.QuoteVolume24hChange5mPct,
+            x.QuoteVolume24hChange15mPct,
+            x.QuoteVolume24hChange30mPct,
+            x.QuoteVolume24hChange1hPct,
+            x.QuoteVolume24hChange3hPct,
+            x.QuoteVolume24hChange6hPct,
+            x.QuoteVolume24hChange12hPct,
+            x.QuoteVolume24hChange24hPct,
             x.FollowUpJson,
             x.CreatedAt
         })
@@ -256,6 +320,9 @@ app.MapGet("/api/symbols/activity", async (
     string? symbols,
     bool? blacklist,
     long? since,
+    int? qavChangeLookbackMinutes,
+    decimal? qavChangeMinPercent,
+    decimal? qavChangeMaxPercent,
     CancellationToken ct) =>
 {
     var symList = ParseSymbols(symbols);
@@ -267,20 +334,64 @@ app.MapGet("/api/symbols/activity", async (
 
     // Agregare in-memory: evitam probleme de traducere SQL pentru decimal pe SQLite.
     var rows = await q
-        .Select(c => new { c.Symbol, c.DiffPercent, c.TotalQuoteUsdt, c.TriggerTimeMs })
+        .Select(c => new
+        {
+            c.Symbol,
+            c.DiffPercent,
+            c.TotalQuoteUsdt,
+            c.TriggerTimeMs,
+            c.QuoteVolume24hUsdt,
+            c.QuoteVolume24hUpdatedMs,
+            c.QuoteVolume24hChange1mPct,
+            c.QuoteVolume24hChange5mPct,
+            c.QuoteVolume24hChange15mPct,
+            c.QuoteVolume24hChange30mPct,
+            c.QuoteVolume24hChange1hPct,
+            c.QuoteVolume24hChange3hPct,
+            c.QuoteVolume24hChange6hPct,
+            c.QuoteVolume24hChange12hPct,
+            c.QuoteVolume24hChange24hPct
+        })
         .ToListAsync(ct)
         .ConfigureAwait(false);
 
     var result = rows
-        .GroupBy(c => c.Symbol)
-        .Select(g => new
+        .Where(c => QavFilterPasses(new CandleEntity
         {
-            Symbol       = g.Key,
-            CandleCount  = g.Count(),
-            MaxDiff      = g.Max(c => c.DiffPercent),
-            AvgDiff      = g.Average(c => (double)c.DiffPercent),
-            TotalQuoteUsdt = g.Sum(c => c.TotalQuoteUsdt),
-            LastTriggerMs  = g.Max(c => c.TriggerTimeMs)
+            QuoteVolume24hChange1mPct = c.QuoteVolume24hChange1mPct,
+            QuoteVolume24hChange5mPct = c.QuoteVolume24hChange5mPct,
+            QuoteVolume24hChange15mPct = c.QuoteVolume24hChange15mPct,
+            QuoteVolume24hChange30mPct = c.QuoteVolume24hChange30mPct,
+            QuoteVolume24hChange1hPct = c.QuoteVolume24hChange1hPct,
+            QuoteVolume24hChange3hPct = c.QuoteVolume24hChange3hPct,
+            QuoteVolume24hChange6hPct = c.QuoteVolume24hChange6hPct,
+            QuoteVolume24hChange12hPct = c.QuoteVolume24hChange12hPct,
+            QuoteVolume24hChange24hPct = c.QuoteVolume24hChange24hPct
+        }, qavChangeLookbackMinutes, qavChangeMinPercent, qavChangeMaxPercent))
+        .GroupBy(c => c.Symbol)
+        .Select(g =>
+        {
+            var latest = g.OrderByDescending(c => c.TriggerTimeMs).First();
+            return new
+            {
+                Symbol = g.Key,
+                CandleCount = g.Count(),
+                MaxDiff = g.Max(c => c.DiffPercent),
+                AvgDiff = g.Average(c => (double)c.DiffPercent),
+                TotalQuoteUsdt = g.Sum(c => c.TotalQuoteUsdt),
+                LastTriggerMs = latest.TriggerTimeMs,
+                latest.QuoteVolume24hUsdt,
+                latest.QuoteVolume24hUpdatedMs,
+                latest.QuoteVolume24hChange1mPct,
+                latest.QuoteVolume24hChange5mPct,
+                latest.QuoteVolume24hChange15mPct,
+                latest.QuoteVolume24hChange30mPct,
+                latest.QuoteVolume24hChange1hPct,
+                latest.QuoteVolume24hChange3hPct,
+                latest.QuoteVolume24hChange6hPct,
+                latest.QuoteVolume24hChange12hPct,
+                latest.QuoteVolume24hChange24hPct
+            };
         })
         .OrderByDescending(x => x.MaxDiff)
         .ToList();
@@ -304,6 +415,9 @@ app.MapGet("/api/candles/buckets", async (
     int?     horizon,
     int?     topN,
     decimal? minDensity,
+    int?     qavChangeLookbackMinutes,
+    decimal? qavChangeMinPercent,
+    decimal? qavChangeMaxPercent,
     CancellationToken ct) =>
 {
     var symList    = ParseSymbols(symbols);
@@ -329,6 +443,10 @@ app.MapGet("/api/candles/buckets", async (
         .Include(c => c.Simulations)
         .ToListAsync(ct)
         .ConfigureAwait(false);
+
+    candles = candles
+        .Where(c => QavFilterPasses(c, qavChangeLookbackMinutes, qavChangeMinPercent, qavChangeMaxPercent))
+        .ToList();
 
     if (candles.Count == 0)
         return Results.Json(Array.Empty<object>());
@@ -377,6 +495,21 @@ app.MapGet("/api/candles/buckets", async (
                 symAgg = new SymbolAgg();
                 bucket.Symbols[candle.Symbol] = symAgg;
             }
+            if (candle.TriggerTimeMs >= symAgg.LatestTriggerTimeMs)
+            {
+                symAgg.LatestTriggerTimeMs = candle.TriggerTimeMs;
+                symAgg.QuoteVolume24hUsdt = candle.QuoteVolume24hUsdt;
+                symAgg.QuoteVolume24hUpdatedMs = candle.QuoteVolume24hUpdatedMs;
+                symAgg.QuoteVolume24hChange1mPct = candle.QuoteVolume24hChange1mPct;
+                symAgg.QuoteVolume24hChange5mPct = candle.QuoteVolume24hChange5mPct;
+                symAgg.QuoteVolume24hChange15mPct = candle.QuoteVolume24hChange15mPct;
+                symAgg.QuoteVolume24hChange30mPct = candle.QuoteVolume24hChange30mPct;
+                symAgg.QuoteVolume24hChange1hPct = candle.QuoteVolume24hChange1hPct;
+                symAgg.QuoteVolume24hChange3hPct = candle.QuoteVolume24hChange3hPct;
+                symAgg.QuoteVolume24hChange6hPct = candle.QuoteVolume24hChange6hPct;
+                symAgg.QuoteVolume24hChange12hPct = candle.QuoteVolume24hChange12hPct;
+                symAgg.QuoteVolume24hChange24hPct = candle.QuoteVolume24hChange24hPct;
+            }
 
             symAgg.Shots++;
             if      (kind == 1) { bucket.Tp++;   symAgg.Tp++;   bucket.TpPnl += gainPct; symAgg.TpPnl += gainPct; }
@@ -408,7 +541,18 @@ app.MapGet("/api/candles/buckets", async (
                     kv.Value.None,
                     TpPnl  = Math.Round(kv.Value.TpPnl, 2),
                     SlPnl  = Math.Round(kv.Value.SlPnl, 2),
-                    NetPnl = Math.Round(kv.Value.TpPnl - kv.Value.SlPnl, 2)
+                    NetPnl = Math.Round(kv.Value.TpPnl - kv.Value.SlPnl, 2),
+                    kv.Value.QuoteVolume24hUsdt,
+                    kv.Value.QuoteVolume24hUpdatedMs,
+                    kv.Value.QuoteVolume24hChange1mPct,
+                    kv.Value.QuoteVolume24hChange5mPct,
+                    kv.Value.QuoteVolume24hChange15mPct,
+                    kv.Value.QuoteVolume24hChange30mPct,
+                    kv.Value.QuoteVolume24hChange1hPct,
+                    kv.Value.QuoteVolume24hChange3hPct,
+                    kv.Value.QuoteVolume24hChange6hPct,
+                    kv.Value.QuoteVolume24hChange12hPct,
+                    kv.Value.QuoteVolume24hChange24hPct
                 })
                 .OrderByDescending(x => x.Shots)
                 .Take(topNVal)
@@ -432,6 +576,9 @@ app.MapGet("/api/candles/shots", async (
     decimal? distanceMax,
     int?     horizon,
     decimal? minDensity,
+    int?     qavChangeLookbackMinutes,
+    decimal? qavChangeMinPercent,
+    decimal? qavChangeMaxPercent,
     int?     take,
     CancellationToken ct) =>
 {
@@ -463,6 +610,9 @@ app.MapGet("/api/candles/shots", async (
     var shots = new List<object>();
     foreach (var candle in candles)
     {
+        if (!QavFilterPasses(candle, qavChangeLookbackMinutes, qavChangeMinPercent, qavChangeMaxPercent))
+            continue;
+
         var sims = candle.Simulations.OrderBy(s => s.OpenOffsetPercent).ToList();
         var best = FindClosestSim(sims, target);
         if (best is null || Math.Abs(best.OpenOffsetPercent - target) > 0.06m) continue;
@@ -489,6 +639,17 @@ app.MapGet("/api/candles/shots", async (
             Outcome        = kind,
             PnlPct         = Math.Round(kind == 1 ? gainPct : kind == 2 ? lossPct : 0, 4),
             SlipPct        = Math.Round(kind == 2 ? Math.Max(0, lossPct - theoPct) : 0, 4),
+            candle.QuoteVolume24hUsdt,
+            candle.QuoteVolume24hUpdatedMs,
+            candle.QuoteVolume24hChange1mPct,
+            candle.QuoteVolume24hChange5mPct,
+            candle.QuoteVolume24hChange15mPct,
+            candle.QuoteVolume24hChange30mPct,
+            candle.QuoteVolume24hChange1hPct,
+            candle.QuoteVolume24hChange3hPct,
+            candle.QuoteVolume24hChange6hPct,
+            candle.QuoteVolume24hChange12hPct,
+            candle.QuoteVolume24hChange24hPct,
         });
     }
 
@@ -520,4 +681,16 @@ file sealed class SymbolAgg
     public int    None  { get; set; }
     public double TpPnl { get; set; }
     public double SlPnl { get; set; }
+    public long LatestTriggerTimeMs { get; set; }
+    public decimal? QuoteVolume24hUsdt { get; set; }
+    public long? QuoteVolume24hUpdatedMs { get; set; }
+    public decimal? QuoteVolume24hChange1mPct { get; set; }
+    public decimal? QuoteVolume24hChange5mPct { get; set; }
+    public decimal? QuoteVolume24hChange15mPct { get; set; }
+    public decimal? QuoteVolume24hChange30mPct { get; set; }
+    public decimal? QuoteVolume24hChange1hPct { get; set; }
+    public decimal? QuoteVolume24hChange3hPct { get; set; }
+    public decimal? QuoteVolume24hChange6hPct { get; set; }
+    public decimal? QuoteVolume24hChange12hPct { get; set; }
+    public decimal? QuoteVolume24hChange24hPct { get; set; }
 }
